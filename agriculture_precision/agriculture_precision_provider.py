@@ -33,6 +33,7 @@ __revision__ = '$Format:%H$'
 from qgis.core import QgsProcessingProvider
 from .algorithms.classification_raster import ClassifyRaster
 from .algorithms.enveloppe_convexe_points import EnveloppeConvexePoints
+from .algorithms.echantillonage_raster import EchantillonageRaster
 
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
@@ -56,7 +57,9 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         """
         
         self.addAlgorithm(ClassifyRaster())
+        self.addAlgorithm(EchantillonageRaster())
         self.addAlgorithm(EnveloppeConvexePoints())
+        
 
     def id(self):
         """
