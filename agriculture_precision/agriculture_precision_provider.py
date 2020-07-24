@@ -34,6 +34,7 @@ from qgis.core import QgsProcessingProvider
 from .algorithms.classification_raster import ClassifyRaster
 from .algorithms.enveloppe_convexe_points import EnveloppeConvexePoints
 from .algorithms.echantillonage_raster import EchantillonageRaster
+from .algorithms.ajoute_coordonnees_vecteur import AjouteCoordonnees
 
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
@@ -59,6 +60,7 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         self.addAlgorithm(ClassifyRaster())
         self.addAlgorithm(EchantillonageRaster())
         self.addAlgorithm(EnveloppeConvexePoints())
+        self.addAlgorithm(AjouteCoordonnees())
         
 
     def id(self):
