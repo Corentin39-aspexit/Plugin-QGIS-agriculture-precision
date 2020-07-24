@@ -209,7 +209,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Classification d'un raster"
+        return "Classification raster"
 
     def displayName(self):
         """
