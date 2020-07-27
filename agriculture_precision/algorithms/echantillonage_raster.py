@@ -38,15 +38,10 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingAlgorithm,
                        QgsApplication,
                        QgsRasterLayer,
-                       #QgsColorRampShader,
-                       #QgsRasterShader,
-                       #QgsSingleBandPseudoColorRenderer,
                        QgsProcessingParameterNumber,
                        QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterRasterDestination,
-                       QgsProcessingParameterEnum,
-                       QgsProcessingParameterFeatureSource,
-                       QgsProcessingParameterFeatureSink)
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterEnum,)
 
 from .functions.fonctions_repartition import *
 
@@ -69,8 +64,10 @@ class EchantillonageRaster(QgsProcessingAlgorithm):
 
     OUTPUT= 'OUTPUT'
     INPUT = 'INPUT'
-    INPUT_METHOD = 'INPUT_METHOD'
+    INPUT_METHOD_ECH = 'INPUT_METHOD_ECH'
+    INPUT_METHOD_CLASS = 'INPUT_METHOD_CLASS'
     INPUT_N_CLASS='INPUT_N_CLASS'
+    INPUT_ECHANTILLON = 'INPUT_ECHANTILLON'
 
     def initAlgorithm(self, config):
         """
@@ -91,19 +88,52 @@ class EchantillonageRaster(QgsProcessingAlgorithm):
        
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.INPUT_METHOD,
+                self.INPUT_METHOD_ECH,
                 self.tr("Choix de la méthode d'echantillonage"),
-                ['Echantillonage', 'Echantillonage sur raster classifié']#, 'Jenks']                
+                ['Echantillonnage seulement', 'Classer puis echantillonner']               
+            )
+        )
+        
+        
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_METHOD_CLASS,
+                self.tr('Choix de la méthode de classification'),
+                ['Quantiles', 'Intervalles Egaux']#, 'Jenks']                
             )
         )
         
         self.addParameter(
-            QgsProcessingParameterRasterDestination(
+            QgsProcessingParameterNumber(
+                self.INPUT_N_CLASS, 
+                self.tr('Nombre de classes souhaité'),
+                QgsProcessingParameterNumber.Integer,
+                4,
+                False,
+                2,
+                10
+            )
+        )
+    
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_ECHANTILLON, 
+                self.tr("Taille de l'échantillon"),
+                QgsProcessingParameterNumber.Integer,
+                10,
+                False,
+                2,
+                100
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
                 self.tr('Couche raster classee')
             )
         )
-        
         
         
 
@@ -114,79 +144,98 @@ class EchantillonageRaster(QgsProcessingAlgorithm):
         
         layer_temp=self.parameterAsRasterLayer(parameters,self.INPUT,context) #type : QgsRasterLayer
         fn = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
-        method = self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
-        nombre_classes=self.parameterAsInt(parameters,self.INPUT_N_CLASS,context)
+        method = self.parameterAsEnum(parameters,self.INPUT_METHOD_ECH,context)
         
-        #self.INPUT c'est le nom de la couche
-        ##parameters c'est la liste des paramètres
-        #donc parameters[self.INPUT] c'est le paramètre dont le nom est self.INPUT
-        #fn contient le str du path du fichier source
-        fn_temp = layer_temp.source()
-        
-        ds_temp = gdal.Open(fn_temp)
+        if method == 0 : 
+          # Pixels de raster en points
+            alg_params = {
+                'FIELD_NAME': 'VALUE',
+                'INPUT_RASTER': parameters[self.INPUT],
+                'RASTER_BAND': 1,
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }
+            point_layer = processing.run('native:pixelstopoints', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
-        #permet de lire la bande du raster en tant que matrice de numpy. 
-        band_temp = ds_temp.GetRasterBand(1)
-        array = band_temp.ReadAsArray()
+            # Sélection aléatoire
+            alg_params = {
+                'INPUT': point_layer['OUTPUT'],
+                'METHOD': 0,
+                'NUMBER': parameters[self.INPUT_ECHANTILLON]
+            }
+            selection_aleatoire = processing.run('qgis:randomselection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
-        #extraction de la valeur artificielle des points sans valeur
-        nodata_val = band_temp.GetNoDataValue()
-        #on va masquer les valeurs de "sans valeur", ce qui va permettre le traitement ensuite
-        if nodata_val is not None:
-            array = np.ma.masked_equal(array, nodata_val)
+            # Extraire les entités sélectionnées
+            alg_params = {
+                'INPUT': selection_aleatoire['OUTPUT'],
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT#QgsProcessing.TEMPORARY_OUTPUT
+            }
+            extraction_selection = processing.run('native:saveselectedfeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
             
-        
-        #on créé la couche raster en calque sur la couche source
-        driver_tiff = gdal.GetDriverByName("GTiff")
-        ds = driver_tiff.Create(fn, xsize=ds_temp.RasterXSize, \
-        ysize = ds_temp.RasterYSize, bands = 1, eType = gdal.GDT_Float32)
+            
+            
+            
+            
 
-        ds.SetGeoTransform(ds_temp.GetGeoTransform())
-        ds.SetProjection(ds_temp.GetProjection())
+        else :
         
-        #on récupère la bande en matrice
-        output = ds.GetRasterBand(1).ReadAsArray()
-        # on rempli cette couche de NaN
-        output[:].fill(np.nan)
-        
-        
-        #QUANTILES
-        if method == 0:             
-            output = rep_quantiles(nombre_classes,array,output)
-        #INTERVALLES EGAUX
-        elif method == 1 :
-            output = intervalles_egaux(nombre_classes,array,output)
+            alg_params = {
+                'INPUT': parameters[self.INPUT],
+                'INPUT_METHOD': parameters[self.INPUT_METHOD_CLASS],
+                'INPUT_N_CLASS': parameters[self.INPUT_N_CLASS],
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }
+            layer_classee = processing.run('Agriculture de précision:Classification raster', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+
+            # Pixels de raster en points
+            alg_params = {
+                'FIELD_NAME': 'VALUE',
+                'INPUT_RASTER': layer_classee['OUTPUT'],
+                'RASTER_BAND': 1,
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }
+            layer_point = processing.run('native:pixelstopoints', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+
+            # Extraire par attribut
+            alg_params = {
+                'FIELD': 'VALUE',
+                'INPUT': layer_point['OUTPUT'],
+                'OPERATOR': 1,
+                'VALUE': 'nan',
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }
+            extraction_attributs = processing.run('native:extractbyattribute', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+
+            # Sélection aléatoire parmi des sous-ensembles
+            alg_params = {
+                'FIELD': 'VALUE',
+                'INPUT': extraction_attributs['OUTPUT'],
+                'METHOD': 0,
+                'NUMBER': parameters[self.INPUT_ECHANTILLON]
+            }
+            selection_aleatoire = processing.run('qgis:randomselectionwithinsubsets', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+            # Extraire les entités sélectionnées
+            alg_params = {
+                'INPUT': selection_aleatoire['OUTPUT'],
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }
+            extraction_selection = processing.run('native:saveselectedfeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        # Ajouter les coordonnees dans un vecteur
+        alg_params = {
+            'CRS': 'ProjectCrs',
+            'INPUT': extraction_selection['OUTPUT'],
+            'PREFIX': '',
+            'OUTPUT': parameters[self.OUTPUT]
+        }
+        ajout_xy = processing.run('native:addxyfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
        
-        #elif method == 2 :'''
-
-        #ajouter les modifications effectuées sur la matrice dans la couche raster
-        ds.GetRasterBand(1).WriteArray(output)
-        
-        
-        ## definir les couleurs du raster
-        '''#create the color ramp shader
-        fnc = QgsColorRampShader()
-        fnc.setColorRampType(QgsColorRampShader.Exact)
-        min=0.25
-        max=1
-        
-
-        #define the color palette (here yellow to green)
-        lst = [QgsColorRampShader.ColorRampItem(min, QColor(255,255,102)),QgsColorRampShader.ColorRampItem(0.5, QColor (255,204,51)),QgsColorRampShader.ColorRampItem(0.75, QColor(255,153,51)),QgsColorRampShader.ColorRampItem(max, QColor(255,102,0))]
-        fnc.setColorRampItemList(lst)
-
-        #assign the color ramp to a QgsRasterShader so it can be used to symbolize a raster layer.
-        shader = QgsRasterShader()
-        shader.setRasterShaderFunction(fnc)
-
-        #Apply symbology to raster
-
-        rlayer = QgsRasterLayer(fn)
-        renderer = QgsSingleBandPseudoColorRenderer(rlayer.dataProvider(), 1, shader)
-        rlayer.setRenderer(renderer)
-        '''
-
-
+                    
+      
         return{self.OUTPUT : fn} #donc c'est bien l'adresse ou se trouve l'objet qu'on veut mettre en sortie qu'on doit mettre
    
     def name(self):
@@ -197,7 +246,7 @@ class EchantillonageRaster(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Classification d'un raster"
+        return "Echantillonnage sur un raster"
 
     def displayName(self):
         """
