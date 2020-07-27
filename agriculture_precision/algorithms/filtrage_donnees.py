@@ -90,9 +90,10 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD, 
-                self.tr( "Selection attribute" ), 
-                QVariant(), 
-                self.INPUT
+                self.tr( "Selection du champ à filtrer" ), 
+                QVariant(),
+                self.INPUT,
+                type=QgsProcessingParameterField.Numeric
             ) 
         )
         
@@ -107,7 +108,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_CONFIANCE,
-                self.tr('Intervale de confiance (Turkey)'),
+                self.tr('Intervale de confiance (3 sigmas)'),
                 ['68%','95%', '99,5%']
             )
         )
@@ -144,9 +145,11 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         
         #on créé une matrice ou 1 ligne = 1 feature
         data = np.array([[feat[field_name] for field_name in field_list] for feat in features])
-        
+                
         #on créer le dataframe avec les données et les noms des colonnes
         df = pd.DataFrame(data, columns = field_list)
+        
+       
         
         if method == 0 :
             int_confiance+=1
@@ -156,18 +159,29 @@ class FiltreDonnees(QgsProcessingAlgorithm):
             df['Aberrant'] = np.where((df[field_to_filter] > mean - int_confiance*sd) & (df[field_to_filter] < mean + int_confiance*sd) , 0, 1)
         
         else :
-            pass
+            quartiles = df[field_to_filter].quantile([0.25,0.75])
+            inter_quartiles = quartiles[0.75] - quartiles [0.25]
+            df['Aberrant'] = np.where((df[field_to_filter] > quartiles[0.25] - inter_quartiles*1.5) & (df[field_to_filter] < quartiles[0.75] + inter_quartiles*1.5), 0, 1)
+        
+         #on va créer un dataframe avec les coordonnées, normalement les features sont parcourrues dans le même ordre
+        features = layer.getFeatures()
+        coordinates_arr = np.array([[feat.geometry().asPoint()[0] for k in range(2)] for feat in features])
+        coordinates = pd.DataFrame(coordinates_arr, columns = ['X','Y'])
+        df['X']=coordinates['X']
+        df['Y']=coordinates['Y']    
+            
+        
         #on transforme le dataframe en liste pour les attributs
         df_list=df.values.tolist()
-        
+                
         #initialisation de la liste des features
         featureList=[]
         
         #on va parcourrir chaque ligne, ie chaque feature
         for row in df_list:
             feat = QgsFeature()
-            feat.setAttributes(row) #row = une ligne, définit les 4 attributs
-            feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(10,10))) #on définit que c'est des points
+            feat.setAttributes(row[0:-2]) #row = une ligne, on exclu les deux dernières colonnes qui sont les coordonnées
+            feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(row[-2],row[-1]))) #on définit la position de chaque point 
             featureList.append(feat) #on ajoute la feature à la liste
 
         sink.addFeatures(featureList)
