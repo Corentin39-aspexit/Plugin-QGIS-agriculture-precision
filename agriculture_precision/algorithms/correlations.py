@@ -71,6 +71,7 @@ class Correlation(QgsProcessingAlgorithm):
     FIELD = 'FIELD'
     INPUT_METHOD = 'INPUT_METHOD'
     INPUT_CONFIANCE = 'INPUT_CONFIANCE'
+    method_names = ['pearson','kendall','spearman']
 
     def initAlgorithm(self, config):
         """
@@ -88,15 +89,15 @@ class Correlation(QgsProcessingAlgorithm):
             )
         )
         
-        '''
+       
         
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Méthode filtre à appliquer'),
-                ['Règle des 3 sigmas','Règle de Tukey']
+                self.tr('Méthode de correlation'),
+                self.method_names
             )
-        )'''
+        )
         
         self.addParameter(
             QgsProcessingParameterFolderDestination(
@@ -114,8 +115,7 @@ class Correlation(QgsProcessingAlgorithm):
         
         layer=self.parameterAsVectorLayer(parameters,self.INPUT,context) 
         fn = self.parameterAsFileOutput(parameters,self.OUTPUT,context)
-        #method=self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
-        
+        method=self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
         
         features = layer.getFeatures()
         #liste contenant les noms des champs
@@ -130,15 +130,21 @@ class Correlation(QgsProcessingAlgorithm):
         #on créer la matrice avec les graphiques de corrélation
         axes = pd.plotting.scatter_matrix(df,alpha=0.2)
         
+        plt.suptitle(layer.name()+'_'+self.method_names[method])
+        
         #on créer la matrice avec les corrélations
-        corr = df.corr().to_numpy()
+   
+        corr = df.corr(self.method_names[method])
+      
+        
+        corr=corr.to_numpy()
         
         # on ajoute les annotations dans la matrice
         for i, j in zip(* np.triu_indices_from(axes, k=1)):
             axes[i, j].annotate("%.3f" %corr[i,j], (0.8, 0.8), xycoords='axes fraction', ha='center', va='center')
         
         #on sauvegarde dans l'adresse en sortie
-        plt.savefig(fn+'\\figure_correlation_' + layer.name() +'.jpg')
+        plt.savefig(fn+'\\figure_correlation_' + self.method_names[method] + '_' + layer.name() +'.jpg')
         
         return{self.OUTPUT : fn} #donc c'est bien l'adresse ou se trouve l'objet qu'on veut mettre en sortie qu'on doit mettre
       
