@@ -65,7 +65,7 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         self.addAlgorithm(AjouteCoordonnees())
         self.addAlgorithm(FiltreDonnees())
         self.addAlgorithm(Correlation())
-        
+
 
     def id(self):
         """
