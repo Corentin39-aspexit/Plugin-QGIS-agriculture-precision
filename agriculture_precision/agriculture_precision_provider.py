@@ -35,8 +35,6 @@ from .algorithms.classification_raster import ClassifyRaster
 from .algorithms.enveloppe_convexe_points import EnveloppeConvexePoints
 from .algorithms.echantillonage_raster import EchantillonageRaster
 from .algorithms.ajoute_coordonnees_vecteur import AjouteCoordonnees
-from .algorithms.filtrage_donnees import FiltreDonnees
-
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
 
@@ -62,7 +60,6 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         self.addAlgorithm(EchantillonageRaster())
         self.addAlgorithm(EnveloppeConvexePoints())
         self.addAlgorithm(AjouteCoordonnees())
-        self.addAlgorithm(FiltreDonnees())
         
 
     def id(self):
