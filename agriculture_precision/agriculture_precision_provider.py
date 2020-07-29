@@ -36,7 +36,6 @@ from .algorithms.enveloppe_convexe_points import EnveloppeConvexePoints
 from .algorithms.echantillonage_raster import EchantillonageRaster
 from .algorithms.ajoute_coordonnees_vecteur import AjouteCoordonnees
 
-
 class AgriculturePrecisionProvider(QgsProcessingProvider):
 
     def __init__(self):
