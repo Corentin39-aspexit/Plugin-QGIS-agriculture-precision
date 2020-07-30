@@ -34,9 +34,9 @@ from qgis.core import QgsProcessingProvider
 from .algorithms.classification_raster import ClassifyRaster
 from .algorithms.enveloppe_convexe_points import EnveloppeConvexePoints
 from .algorithms.echantillonage_raster import EchantillonageRaster
-from .algorithms.ajoute_coordonnees_vecteur import AjouteCoordonnees
 from .algorithms.filtrage_donnees import FiltreDonnees
 from .algorithms.correlations import Correlation
+from .algorithms.interpolation_points import InterpolationPoints
 
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
@@ -62,10 +62,10 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         self.addAlgorithm(ClassifyRaster())
         self.addAlgorithm(EchantillonageRaster())
         self.addAlgorithm(EnveloppeConvexePoints())
-        self.addAlgorithm(AjouteCoordonnees())
         self.addAlgorithm(FiltreDonnees())
         self.addAlgorithm(Correlation())
-
+        self.addAlgorithm(InterpolationPoints())
+        
 
     def id(self):
         """
