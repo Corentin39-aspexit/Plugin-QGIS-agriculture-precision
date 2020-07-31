@@ -33,10 +33,11 @@ __revision__ = '$Format:%H$'
 from qgis.core import QgsProcessingProvider
 from .algorithms.classification_raster import ClassifyRaster
 from .algorithms.enveloppe_convexe_points import EnveloppeConvexePoints
-from .algorithms.echantillonage_raster import EchantillonageRaster
-from .algorithms.ajoute_coordonnees_vecteur import AjouteCoordonnees
+from .algorithms.echantillonnage_raster import EchantillonageRaster
 from .algorithms.filtrage_donnees import FiltreDonnees
 from .algorithms.correlations import Correlation
+from .algorithms.interpolation_points import InterpolationPoints
+from .algorithms.echantillonnage_polygone import EchantillonnagePolygone
 
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
@@ -58,14 +59,18 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         """
         Loads all algorithms belonging to this provider.
         """
-        
+        #Raster
         self.addAlgorithm(ClassifyRaster())
         self.addAlgorithm(EchantillonageRaster())
-        self.addAlgorithm(EnveloppeConvexePoints())
-        self.addAlgorithm(AjouteCoordonnees())
-        self.addAlgorithm(FiltreDonnees())
+        #Vecteur        
         self.addAlgorithm(Correlation())
+        self.addAlgorithm(EnveloppeConvexePoints())
+        self.addAlgorithm(EchantillonnagePolygone())
+        self.addAlgorithm(FiltreDonnees())
 
+        self.addAlgorithm(InterpolationPoints())
+        
+        
 
     def id(self):
         """
