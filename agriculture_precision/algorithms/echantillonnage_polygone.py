@@ -144,11 +144,18 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
             if parameters[self.BOOL_DISTANCE]:
                 spacing = parameters[self.INPUT_DISTANCE]
             else :
+                features = layer.getFeatures()
+                area = 0
+                for f in features:
+                    geom = f.geometry()
+                    area += geom.area()
                 ex = layer.extent()
                 xlength = ex.xMaximum() - ex.xMinimum()
                 ylength = ex.yMaximum() - ex.yMinimum()
-                D = ((xlength/ylength) +1)**2 - 4*(xlength/ylength)*(1-nombre_points)
-                a = (1-(xlength/ylength)+sqrt(D))/2
+                if area != 0:
+                    coef = area/(xlength*ylength)
+                    D = ((xlength/ylength) +1)**2 - 4*(xlength/ylength)*(1-(nombre_points/coef))
+                    a = (1-(xlength/ylength)+sqrt(D))/2
                 spacing = xlength/a
                 
             # Points réguliers
