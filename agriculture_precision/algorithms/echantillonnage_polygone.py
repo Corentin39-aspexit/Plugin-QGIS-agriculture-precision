@@ -33,6 +33,7 @@ __revision__ = '$Format:%H$'
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
+                       QgsProcessingUtils,
                        QgsFeatureSink,
                        QgsProcessingAlgorithm,
                        QgsApplication,
@@ -47,6 +48,7 @@ from qgis.core import (QgsProcessing,
 
 from qgis import processing 
 from math import sqrt
+import random
 
 class EchantillonnagePolygone(QgsProcessingAlgorithm):
     """
@@ -58,6 +60,7 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
     INPUT_METHOD = 'INPUT_METHOD'
     INPUT_N_POINTS = 'INPUT_N_POINTS'
     INPUT_DISTANCE = 'INPUT_DISTANCE'
+    INPUT_BUFFER = 'INPUT_BUFFER'
     BOOL_DISTANCE = 'BOOL_DISTANCE'
 
     def initAlgorithm(self, config):
@@ -82,7 +85,6 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
             )
         )
         
-        
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_N_POINTS, 
@@ -90,8 +92,16 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
                 QgsProcessingParameterNumber.Integer,
                 10
             )
-        )    
-        
+        ) 
+
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_BUFFER, 
+                self.tr('Distance aux bords sans échantillon (en mètres)'),
+                QgsProcessingParameterNumber.Double,
+                5
+            )
+        )         
         
         self.addParameter(
             QgsProcessingParameterBoolean(
@@ -127,11 +137,28 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         output_path = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
         nombre_points = self.parameterAsInt(parameters,self.INPUT_N_POINTS,context)
         method = self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
+        buffer_distance = self.parameterAsDouble(parameters,self.INPUT_BUFFER,context)
         
+        # Tampon
+        # Pour limiter l'effet de bord
+        alg_params = {
+            'DISSOLVE': False,
+            'DISTANCE': -(buffer_distance),
+            'END_CAP_STYLE': 0,
+            'INPUT': parameters['INPUT'],
+            'JOIN_STYLE': 0,
+            'MITER_LIMIT': 2,
+            'SEGMENTS': 5,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        tampon = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+       
+        buffer_layer = QgsProcessingUtils.mapLayerFromString(tampon, context)
+                
         if method == 0 :
             # Points aléatoires à l'intérieur des polygones
             alg_params = {
-                'INPUT': parameters[self.INPUT],
+                'INPUT': tampon,
                 'MIN_DISTANCE': None,
                 'STRATEGY': 0,
                 'VALUE': nombre_points,
@@ -141,15 +168,16 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
             
 
         else :
+            
             if parameters[self.BOOL_DISTANCE]:
                 spacing = parameters[self.INPUT_DISTANCE]
             else :
-                features = layer.getFeatures()
+                features = buffer_layer.getFeatures()
                 area = 0
                 for f in features:
                     geom = f.geometry()
                     area += geom.area()
-                ex = layer.extent()
+                ex = buffer_layer.extent()
                 xlength = ex.xMaximum() - ex.xMinimum()
                 ylength = ex.yMaximum() - ex.yMinimum()
                 if area != 0:
@@ -159,10 +187,11 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
                 spacing = xlength/a
                 
             # Points réguliers
+            rand = random.random()
             alg_params = {
                 'CRS': 'ProjectCrs',
-                'EXTENT': parameters[self.INPUT],
-                'INSET': 0,
+                'EXTENT': tampon,
+                'INSET': spacing*rand,
                 'IS_SPACING': True,
                 'RANDOMIZE': False,
                 'SPACING': spacing,
@@ -173,7 +202,7 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
             # Couper
             alg_params = {
                 'INPUT': point_grid['OUTPUT'],
-                'OVERLAY': parameters[self.INPUT],
+                'OVERLAY': buffer_layer,
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
             }
             pre_echantillon = processing.run('native:clip', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
@@ -220,6 +249,15 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         should be localised.
         """
         return self.tr('Action sur Vecteurs')
+    
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Permet de réaliser un échantillonnage dans un polygone. Le nombre de points est défini par '
+            'l’utilisateur et plusieurs schémas d’échantillonnage sont disponibles. '
+            'Aléatoire : les points sont placés aléatoirement ; '
+            'Régulier : Les points sont régulièrement répartis.'
+            )
+        return short_help
 
     def groupId(self):
         """
