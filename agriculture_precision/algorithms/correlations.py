@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+## -*- coding: utf-8 -*-
 
 """
 /***************************************************************************
@@ -101,8 +101,8 @@ class Correlation(QgsProcessingAlgorithm):
         
         features = layer.getFeatures()
        
-       #liste contenant les noms des champs
-        field_list=[field.name() for field in layer.fields()]
+        #liste contenant les noms des champs
+        field_list=[field.name() for field in layer.fields() if field.typeName() in ["Integer","Real"]] #peut-être qu'il y a d'autres types numériques... difficile a trouver
         
         #on créé une matrice ou 1 ligne = 1 feature
         data = np.array([[feat[field_name] for field_name in field_list] for feat in features])
@@ -153,7 +153,17 @@ class Correlation(QgsProcessingAlgorithm):
         should be localised.
         """
         return self.tr('Action sur Vecteurs')
-
+    
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Permet de calculer un indice de corrélation entre deux champs (colonne) d’une couche vecteur. '
+            'Plusieurs indices sont disponibles :'
+            ' Corrélation de Pearson, '
+            'Corrélation de Spearman, '
+            'Corrélation de Kendall.'
+        )
+        return short_help
+        
     def groupId(self):
         """
         Returns the unique ID of the group this algorithm belongs to. This
