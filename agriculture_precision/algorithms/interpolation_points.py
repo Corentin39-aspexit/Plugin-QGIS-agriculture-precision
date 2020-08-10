@@ -56,7 +56,8 @@ class InterpolationPoints(QgsProcessingAlgorithm):
     OUTPUT= 'OUTPUT'
     INPUT = 'INPUT'
     INPUT_METHOD = 'INPUT_METHOD'
-    INPUT_RESOLUTION = 'INPUT_RESOLUTION'
+    INPUT_PIXEL = 'INPUT_PIXEL'
+    INPUT_POWER = 'INPUT_POWER'
     FIELD = 'FIELD'
 
     def initAlgorithm(self, config):
@@ -93,17 +94,26 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.INPUT_RESOLUTION,
-                self.tr('Résolution'),
+                self.INPUT_PIXEL,
+                self.tr('Taille du pixel'),
+                QgsProcessingParameterNumber.Double,
+                0.5
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_POWER,
+                self.tr('Puissance (Pondération inverse à la distance)'),
                 QgsProcessingParameterNumber.Integer,
-                200
+                2
             )
         )
         
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-                self.tr('Enveloppe')
+                self.tr('Interpolation')
             )
         )
         
@@ -117,24 +127,22 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         layer = self.parameterAsVectorLayer(parameters,self.INPUT,context)
         output_path = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
         method = self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
-        resolution = self.parameterAsInt(parameters,self.INPUT_RESOLUTION,context)
+        pixel_size = self.parameterAsDouble(parameters,self.INPUT_PIXEL,context)
         
         if method == 3 :
-            #obtenir la taille d'un pixel (custom function)
-            pix = pixel_size(layer,resolution)
           # interpolation pondérée inversement à la distance (GRASS)
             alg_params = {
                 '-n': False,
                 'GRASS_MIN_AREA_PARAMETER': 0.0001,
                 'GRASS_RASTER_FORMAT_META': '',
                 'GRASS_RASTER_FORMAT_OPT': '',
-                'GRASS_REGION_CELLSIZE_PARAMETER': pix, #le calculer ?
+                'GRASS_REGION_CELLSIZE_PARAMETER': pixel_size, 
                 'GRASS_REGION_PARAMETER': parameters[self.INPUT],
                 'GRASS_SNAP_TOLERANCE_PARAMETER': -1,
                 'column': parameters[self.FIELD],
                 'input': parameters[self.INPUT],
                 'npoints': None,
-                'power': 2,
+                'power': parameters[self.INPUT_POWER],
                 'output': parameters[self.OUTPUT]
             }
             raster_layer = processing.run('grass7:v.surf.idw', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
@@ -198,7 +206,7 @@ class InterpolationPoints(QgsProcessingAlgorithm):
                 }
                 layer_to_rasterize = processing.run('qgis:joinattributesbylocation', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
                 
-
+            resolution = pixel_resolution(layer,pixel_size)
             # Rasteriser (vecteur vers raster)
             alg_params = {
                 'BURN': None,
@@ -206,14 +214,14 @@ class InterpolationPoints(QgsProcessingAlgorithm):
                 'EXTENT': layer_to_rasterize['OUTPUT'],
                 'EXTRA': '',
                 'FIELD': parameters[self.FIELD],
-                'HEIGHT': resolution,
+                'HEIGHT': resolution[1],
                 'INIT': None,
                 'INPUT': layer_to_rasterize['OUTPUT'],
                 'INVERT': False,
                 'NODATA': 0,
                 'OPTIONS': '',
                 'UNITS': 0,
-                'WIDTH': parameters[self.INPUT_RESOLUTION],
+                'WIDTH': resolution[0],
                 'OUTPUT': parameters[self.OUTPUT]
             }
             raster_layer = processing.run('gdal:rasterize', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
