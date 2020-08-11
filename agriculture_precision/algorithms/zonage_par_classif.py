@@ -37,17 +37,24 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingAlgorithm,
                        QgsApplication,
                        QgsVectorLayer,
+                       QgsRasterLayer,
                        QgsProcessingParameterEnum,
                        QgsProcessingParameterNumber,
                        QgsProcessingParameterBoolean,
                        QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterFolderDestination,
                        QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterVectorDestination)
+                       QgsProcessingParameterVectorDestination
+                       )
 
 
 
 from qgis import processing 
 from math import sqrt
+import os
+import tempfile
+
+
 
 class ZonageClassification(QgsProcessingAlgorithm):
     """
@@ -59,6 +66,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
     INPUT_CONTOUR = 'INPUT_CONTOUR'
     INPUT_METHOD = 'INPUT_METHOD'
     INPUT_N_CLASS = 'INPUT_N_CLASS'
+    TEMP_PATH = 'TEMP_PATH'
 
 
     def initAlgorithm(self, config):
@@ -80,12 +88,13 @@ class ZonageClassification(QgsProcessingAlgorithm):
                 self.tr('Raster à zoner')
             )
         )
+       
         
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
                 self.tr('Choix de la méthode de classification'),
-                ['Quantiles', 'Intervalles Egaux', '(Jenks)', '(K-means (Iterative Minimum Distance))']                
+                ['Quantiles', 'Intervalles Egaux', 'K-means (Iterative Minimum Distance)']                
             )
         )
        
@@ -118,25 +127,26 @@ class ZonageClassification(QgsProcessingAlgorithm):
         contour = self.parameterAsVectorLayer(parameters,self.INPUT_CONTOUR,context)
         layer = self.parameterAsRasterLayer(parameters,self.INPUT,context)
         output_path = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
+        # création d'un dossier temporaire pour les fonctions GRASS
+        tempfolder = tempfile.mkdtemp()
         
         nombre_classes = self.parameterAsInt(parameters,self.INPUT_N_CLASS,context)
         method = self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
         
-        '''
         # Tampon
         alg_params = {
             'DISSOLVE': False,
-            'DISTANCE': 10
+            'DISTANCE': 10,
             'END_CAP_STYLE': 0,
             'INPUT': parameters['INPUT_CONTOUR'],
             'JOIN_STYLE': 0,
             'MITER_LIMIT': 2,
             'SEGMENTS': 5,
-            'OUTPUT': parameters['OUTPUT']#QgsProcessing.TEMPORARY_OUTPUT
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
-        tampon = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        tampon = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
-        '''
+
         # Découper un raster selon une couche de masque
         alg_params = {
             'ALPHA_BAND': False,
@@ -145,7 +155,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'EXTRA': '',
             'INPUT': parameters['INPUT'],
             'KEEP_RESOLUTION': False,
-            'MASK': parameters['INPUT_CONTOUR'],#tampon,
+            'MASK': tampon['OUTPUT'],
             'MULTITHREADING': False,
             'NODATA': None,
             'OPTIONS': '',
@@ -154,20 +164,19 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'TARGET_CRS': 'ProjectCrs',
             'X_RESOLUTION': None,
             'Y_RESOLUTION': None,
-            'CHECK_DISK_FREE_SPACE':False,
-            'OUTPUT': parameters['OUTPUT'] #QgsProcessing.TEMPORARY_OUTPUT
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
-        raster_coupe = processing.run('gdal:cliprasterbymasklayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
-        '''
-        
+        coupe = processing.run('gdal:cliprasterbymasklayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+
         # Classification raster
         alg_params = {
-            'INPUT': raster_coupe,
+            'INPUT': coupe['OUTPUT'],
             'INPUT_METHOD': method,
             'INPUT_N_CLASS': nombre_classes,
             'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
-        sorted_layer = processing.run('Agriculture de précision:Classification raster', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        classe = processing.run('Agriculture de précision:Classification raster', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
         # r.neighbors
         alg_params = {
@@ -178,54 +187,54 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'GRASS_REGION_CELLSIZE_PARAMETER': 0,
             'GRASS_REGION_PARAMETER': None,
             'gauss': None,
-            'input': sorted_layer,
+            'input': classe['OUTPUT'],
             'method': 2,
             'quantile': '',
-            'selection': sorted_layer,
+            'selection': classe['OUTPUT'],
             'size': 3,
             'weight': '',
-            'output': QgsProcessing.TEMPORARY_OUTPUT
+            'output': tempfolder+'temporary.tif'
         }
-        r_neighbors = processing.run('grass7:r.neighbors', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['output']
         
-        alg_params = {
-            'COLUMN': 'fid',
-            'INPUT': r_neighbors,
-            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
-        }
-        supprimer_champ = processing.run('qgis:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        processing.run('grass7:r.neighbors', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
-
-        # Polygoniser (Raster vers Vecteur)
+        
+        # Polygoniser (raster vers vecteur)
         alg_params = {
             'BAND': 1,
             'EIGHT_CONNECTEDNESS': False,
             'EXTRA': '',
             'FIELD': 'DN',
-            'INPUT': supprimer_champ,
+            'INPUT': tempfolder+'temporary.tif',#temp_path+'.tif', #voisins['output'],
             'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
-        poligonized = processing.run('gdal:polygonize', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        polygones = processing.run('gdal:polygonize', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
-       
+        # Réparer les géométries
+        alg_params = {
+            'INPUT': polygones['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        repare = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
         # Intersection
         alg_params = {
-            'INPUT': poligonized,
+            'INPUT': parameters['INPUT_CONTOUR'],
             'INPUT_FIELDS': None,
-            'OVERLAY': parameters['INPUT_CONTOUR'],
+            'OVERLAY': repare['OUTPUT'],
             'OVERLAY_FIELDS': None,
             'OVERLAY_FIELDS_PREFIX': '',
             'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
-        intersection = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        intersection = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
         # Supprimer champ(s)
         alg_params = {
             'COLUMN': 'fid',
-            'INPUT': intersection,
+            'INPUT': intersection['OUTPUT'],
             'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
-        supprimer_champ = processing.run('qgis:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        champ_suppr = processing.run('qgis:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
         # v.clean
         alg_params = {
@@ -238,32 +247,33 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'GRASS_VECTOR_DSCO': '',
             'GRASS_VECTOR_EXPORT_NOCAT': False,
             'GRASS_VECTOR_LCO': '',
-            'input': supprimer_champ,
+            'input': champ_suppr['OUTPUT'],
             'threshold': '250',
             'tool': [10],
             'type': [0,1,2,3,4,5,6],
             'error': QgsProcessing.TEMPORARY_OUTPUT,
-            'output': QgsProcessing.TEMPORARY_OUTPUT
+            'output': tempfolder+'temporary.shp'
         }
-        v_clean = processing.run('grass7:v.clean', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['output']
+        processing.run('grass7:v.clean', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
         # Supprimer champ(s)
         alg_params = {
             'COLUMN': 'fid',
-            'INPUT': v_clean,
+            'INPUT': tempfolder+'temporary.shp',#clean['output'],
             'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
-        supprimer_champ = processing.run('qgis:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        champ_suppr = processing.run('qgis:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
 
         # Statistiques de zone
         alg_params = {
             'COLUMN_PREFIX': '_',
             'INPUT_RASTER': parameters['INPUT'],
-            'INPUT_VECTOR': supprimer_champ,
+            'INPUT_VECTOR': champ_suppr['OUTPUT'],
             'RASTER_BAND': 1,
             'STATS': [2,4]
         }
-        statistique_de_zone = processing.run('qgis:zonalstatistics', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['INPUT_VECTOR']
+        stat = processing.run('qgis:zonalstatistics', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
         # v.generalize
         alg_params = {
@@ -283,7 +293,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'cats': '',
             'closeness_thresh': 0,
             'degree_thresh': 0,
-            'input': statistique_de_zone,
+            'input': stat['INPUT_VECTOR'],
             'iterations': 1,
             'look_ahead': 7,
             'method': 0,
@@ -295,8 +305,8 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'error': QgsProcessing.TEMPORARY_OUTPUT,
             'output': parameters['OUTPUT']
         }
-        processing.run('grass7:v.generalize', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        '''
+        generalise = processing.run('grass7:v.generalize', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        
         
         return{self.OUTPUT : output_path} 
    
