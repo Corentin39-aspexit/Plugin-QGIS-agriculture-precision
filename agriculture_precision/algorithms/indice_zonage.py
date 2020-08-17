@@ -174,7 +174,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
             if var_df_list[k] !=0 :
                 RV.append(1- (area_weighted_variance[k]/var_df_list[k]))
             else :
-                RV.append(0)
+                RV.append(NULL)
             
         
         #création du fichier csv qui va contenir les données de RV
@@ -182,7 +182,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
           # write header
           line = ','.join(name for name in field_list if name != 'DN') + '\n'
           output_file.write(line)
-          line = ','.join(str(RV[k]) for k in range(nb_columns)) + '\n'
+          line = ','.join(str(rv) for rv in RV) + '\n'
           output_file.write(line)
          
         
