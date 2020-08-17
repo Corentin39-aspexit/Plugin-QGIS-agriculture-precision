@@ -82,7 +82,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
                 self.tr('Choix de la méthode de classification'),
-                ['Quantiles', 'Intervalles Egaux']#, 'Jenks']                
+                ['Quantiles', 'Intervalles Egaux', 'Jenks', 'K-means (Iterative Minimum Distance)']                
             )
         )
        
@@ -101,7 +101,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-                self.tr('Couche raster classee')
+                self.tr('Classes')
             )
         )
         
@@ -117,52 +117,68 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         fn = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
         method = self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
         nombre_classes=self.parameterAsInt(parameters,self.INPUT_N_CLASS,context)
-        
-        # récupération du path de la couche en entrée
-        fn_temp = layer_temp.source()
-        
-        # ouverture de la couche avec la bibliothèque gdal
-        ds_temp = gdal.Open(fn_temp)
-
-        #permet de lire la bande du raster en tant que matrice de numpy. 
-        band_temp = ds_temp.GetRasterBand(1)
-        array = band_temp.ReadAsArray()
-
-        #extraction de la valeur "artificielle" (-infini) des points sans valeur
-        nodata_val = band_temp.GetNoDataValue()
-        
-        #on va masquer les valeurs de "sans valeur", ce qui va permettre le traitement ensuite
-        if nodata_val is not None:
-            array = np.ma.masked_equal(array, nodata_val)
+         
+        #k-means
+        if method == 3 :
+            # K-means clustering for grids
+            alg_params = {
+                'GRIDS': parameters[self.INPUT],
+                'MAXITER': 0,
+                'METHOD': 0,
+                'NCLUSTER': nombre_classes,
+                'NORMALISE': False,
+                'OLDVERSION': False,
+                'UPDATEVIEW': True,
+                'CLUSTER': parameters[self.OUTPUT],
+                'STATISTICS': parameters[self.OUTPUT]
+            }
+            processing.run('saga:kmeansclusteringforgrids', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
             
-        
-        #on créé la couche raster en calque sur la couche source
-        driver_tiff = gdal.GetDriverByName("GTiff")
-        ds = driver_tiff.Create(fn, xsize=ds_temp.RasterXSize, \
-        ysize = ds_temp.RasterYSize, bands = 1, eType = gdal.GDT_Float32)
+        else :
+            # récupération du path de la couche en entrée
+            fn_temp = layer_temp.source()
+            
+            # ouverture de la couche avec la bibliothèque gdal
+            ds_temp = gdal.Open(fn_temp)
 
-        ds.SetGeoTransform(ds_temp.GetGeoTransform())
-        ds.SetProjection(ds_temp.GetProjection())
-        
-        #on récupère la bande en matrice
-        output = ds.GetRasterBand(1).ReadAsArray()
-        
-        # on rempli cette couche de NaN
-        output[:].fill(np.nan)
-        
-        
-        #QUANTILES
-        if method == 0:             
-            output = rep_quantiles(nombre_classes,array,output)
-        #INTERVALLES EGAUX
-        elif method == 1 :
-            output = intervalles_egaux(nombre_classes,array,output)
-       
-        #JENKS
-        #elif method == 2 : 
+            #permet de lire la bande du raster en tant que matrice de numpy. 
+            band_temp = ds_temp.GetRasterBand(1)
+            array = band_temp.ReadAsArray()
 
-        #ajouter les modifications effectuées sur la matrice dans la couche raster
-        ds.GetRasterBand(1).WriteArray(output)
+            #extraction de la valeur "artificielle" (-infini) des points sans valeur
+            nodata_val = band_temp.GetNoDataValue()
+            
+            #on va masquer les valeurs de "sans valeur", ce qui va permettre le traitement ensuite
+            if nodata_val is not None:
+                array = np.ma.masked_equal(array, nodata_val)
+                
+            
+            #on créé la couche raster en calque sur la couche source
+            driver_tiff = gdal.GetDriverByName("GTiff")
+            ds = driver_tiff.Create(fn, xsize=ds_temp.RasterXSize, \
+            ysize = ds_temp.RasterYSize, bands = 1, eType = gdal.GDT_Float32)
+
+            ds.SetGeoTransform(ds_temp.GetGeoTransform())
+            ds.SetProjection(ds_temp.GetProjection())
+            
+            #on récupère la bande en matrice
+            output = ds.GetRasterBand(1).ReadAsArray()
+            
+            # on rempli cette couche de NaN
+            output[:].fill(np.nan)
+         
+            #QUANTILES
+            if method == 0:             
+                output = rep_quantiles(nombre_classes,array,output)
+            #INTERVALLES EGAUX
+            elif method == 1 :
+                output = intervalles_egaux(nombre_classes,array,output)
+           
+            #JENKS
+            #elif method == 2 : 
+     
+            #ajouter les modifications effectuées sur la matrice dans la couche raster
+            ds.GetRasterBand(1).WriteArray(output)
         
         
         ## definir les couleurs du raster

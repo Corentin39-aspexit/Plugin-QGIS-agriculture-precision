@@ -39,7 +39,6 @@ from .algorithms.correlations import Correlation
 from .algorithms.interpolation_points import InterpolationPoints
 from .algorithms.echantillonnage_polygone import EchantillonnagePolygone
 
-
 class AgriculturePrecisionProvider(QgsProcessingProvider):
 
     def __init__(self):
@@ -67,9 +66,11 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         self.addAlgorithm(EnveloppeConvexePoints())
         self.addAlgorithm(EchantillonnagePolygone())
         self.addAlgorithm(FiltreDonnees())
-
         self.addAlgorithm(InterpolationPoints())
         
+
+   
+        self.addAlgorithm(Correlation())
         
 
     def id(self):
