@@ -102,7 +102,7 @@ class Correlation(QgsProcessingAlgorithm):
         features = layer.getFeatures()
        
         #liste contenant les noms des champs
-        field_list=[field.name() for field in layer.fields() if field.typeName() in ["Integer","Real"]] #peut-être qu'il y a d'autres types numériques... difficile a trouver
+        field_list=[field.name() for field in layer.fields() if field.type() in [2,4,6]] #peut-être qu'il y a d'autres types numériques... difficile a trouver
         
         #on créé une matrice ou 1 ligne = 1 feature
         data = np.array([[feat[field_name] for field_name in field_list] for feat in features])
