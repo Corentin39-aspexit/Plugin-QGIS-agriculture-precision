@@ -38,6 +38,10 @@ from .algorithms.filtrage_donnees import FiltreDonnees
 from .algorithms.correlations import Correlation
 from .algorithms.interpolation_points import InterpolationPoints
 from .algorithms.echantillonnage_polygone import EchantillonnagePolygone
+from .algorithms.zonage_par_classif import ZonageClassification
+from .algorithms.tesselations import Tesselations
+from .algorithms.xml_to_shp import XmlToShp
+from .algorithms.indice_zonage import IndiceZonage
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
 
@@ -61,16 +65,18 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         #Raster
         self.addAlgorithm(ClassifyRaster())
         self.addAlgorithm(EchantillonageRaster())
+        self.addAlgorithm(ZonageClassification())
         #Vecteur        
         self.addAlgorithm(Correlation())
         self.addAlgorithm(EnveloppeConvexePoints())
         self.addAlgorithm(EchantillonnagePolygone())
         self.addAlgorithm(FiltreDonnees())
+        self.addAlgorithm(Tesselations())
         self.addAlgorithm(InterpolationPoints())
+        self.addAlgorithm(IndiceZonage())
+        #Autre
+        self.addAlgorithm(XmlToShp())
         
-
-   
-        self.addAlgorithm(Correlation())
         
 
     def id(self):
