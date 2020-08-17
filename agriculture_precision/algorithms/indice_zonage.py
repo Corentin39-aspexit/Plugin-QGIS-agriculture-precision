@@ -65,6 +65,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
     OUTPUT= 'OUTPUT'
     INPUT_POINTS = 'INPUT_POINTS'
     INPUT_ZONES = 'INPUT_ZONES'
+    FIELD_ID = 'FIELD_ID'
   
 
     def initAlgorithm(self, config):
@@ -89,6 +90,25 @@ class IndiceZonage(QgsProcessingAlgorithm):
             )
         )
         
+        self.addParameter( 
+            QgsProcessingParameterField( 
+                self.FIELD_ID,
+                self.tr( "Champ identifiant des zones" ), 
+                QVariant(),
+                self.INPUT_ZONES
+            ) 
+        )
+        
+        '''self.addParameter( 
+            QgsProcessingParameterField( 
+                self.FIELD, 
+                self.tr( "Champ à rasteriser" ), 
+                QVariant(),
+                self.INPUT,
+                type=QgsProcessingParameterField.Numeric
+            ) 
+        )'''
+        
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.OUTPUT,
@@ -106,6 +126,9 @@ class IndiceZonage(QgsProcessingAlgorithm):
         
         layer_points=self.parameterAsVectorLayer(parameters,self.INPUT_POINTS,context) 
         csv = self.parameterAsFileOutput(parameters, self.OUTPUT, context)
+        zone_id = self.parameterAsString(parameters, self.FIELD_ID, context)
+        
+      
          
          # Joindre les attributs par localisation
         alg_params = {
@@ -125,7 +148,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
        
         
         #liste contenant les noms des champs (uniquement numériques)
-        field_list=[field.name() for field in points_et_zones.fields() if field.type() in [4,6] or field.name() == 'DN'] #ici DN str
+        field_list=[field.name() for field in points_et_zones.fields() if field.type() in [4,6] or field.name() == zone_id] 
         # 4 integer64, 6 Real
       
         #on créé une matrice ou 1 ligne = 1 feature
@@ -141,10 +164,10 @@ class IndiceZonage(QgsProcessingAlgorithm):
         df = df.astype(float)# !!! ne va pas marcher si l'identifiant de parcelle n'est pas un chiffre 
         
         #compte du nombre de points (non NaN) dans chaque zone
-        nb_points_zones = df.groupby(['DN']).count()
+        nb_points_zones = df.groupby([zone_id]).count()
         nb_points_list = nb_points_zones.values.tolist()
         #avoir la variance pour chaque zone 
-        df = df.groupby(['DN']).var()
+        df = df.groupby([zone_id]).var()
         df_list = df.values.tolist()
         
         nb_points = len(df)
@@ -154,15 +177,9 @@ class IndiceZonage(QgsProcessingAlgorithm):
         #calcul de la variance pour chaque zone et pour chaque champ
         k = 0
         for variance in df_list :
-            QgsMessageLog.logMessage(str(nb_columns))
-            QgsMessageLog.logMessage('df_list' + str(len(df_list)))
-            QgsMessageLog.logMessage('nb_points_list' + str(len(nb_points_list)))
             for i in range(nb_columns):
-#QgsMessageLog.logMessage(str(variance[i]))
                 prop_variance = variance[i]*(nb_points_list[k][i]/nb_points)
                 area_weighted_variance[i] += prop_variance
-            #QgsMessageLog.logMessage(str(nb_columns))
-            #QgsMessageLog.logMessage(str(variance[nb_columns-1])) 
             k+=1
         #calcul de la variance totale
         var_df = df.var()
@@ -180,7 +197,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
         #création du fichier csv qui va contenir les données de RV
         with open(csv, 'w') as output_file:
           # write header
-          line = ','.join(name for name in field_list if name != 'DN') + '\n'
+          line = ','.join(name for name in field_list if name != zone_id) + '\n'
           output_file.write(line)
           line = ','.join(str(rv) for rv in RV) + '\n'
           output_file.write(line)
