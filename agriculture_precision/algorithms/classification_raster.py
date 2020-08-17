@@ -82,7 +82,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
                 self.tr('Choix de la méthode de classification'),
-                ['Quantiles', 'Intervalles Egaux', 'Jenks', 'K-means (Iterative Minimum Distance)']                
+                ['Quantiles', 'Intervalles Egaux', 'K-means (Iterative Minimum Distance)']                
             )
         )
        
@@ -119,7 +119,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         nombre_classes=self.parameterAsInt(parameters,self.INPUT_N_CLASS,context)
          
         #k-means
-        if method == 3 :
+        if method == 2 :
             # K-means clustering for grids
             alg_params = {
                 'GRIDS': parameters[self.INPUT],
@@ -132,7 +132,9 @@ class ClassifyRaster(QgsProcessingAlgorithm):
                 'CLUSTER': parameters[self.OUTPUT],
                 'STATISTICS': parameters[self.OUTPUT]
             }
-            processing.run('saga:kmeansclusteringforgrids', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+            #on place manuellement la couche CLUSTER dans fn, sinon l'algorithme classification n'a pas la couche en OUTPUT (problèmes
+            #dans zonage ensuite)
+            fn = processing.run('saga:kmeansclusteringforgrids', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['CLUSTER']
             
         else :
             # récupération du path de la couche en entrée
@@ -230,6 +232,13 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         should be localised.
         """
         return self.tr('Action sur Raster')
+        
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Permet de reclassifier un raster en un nombre de classes défini par l’utilisateur à l’aide de '
+            'plusieurs méthodes de classification : Intervalles égaux, Quantiles, K-means'
+        )
+        return short_help
 
     def groupId(self):
         """
