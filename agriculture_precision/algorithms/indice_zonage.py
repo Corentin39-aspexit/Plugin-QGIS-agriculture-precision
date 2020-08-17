@@ -47,7 +47,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterVectorLayer,
                        QgsProcessingParameterFileDestination,
                        QgsProcessingParameterField,
-                       QgsProcessingParameterEnum,
+                       QgsProcessingParameterBoolean,
                        QgsProcessingUtils,
                        NULL,
                        QgsMessageLog)
@@ -66,6 +66,8 @@ class IndiceZonage(QgsProcessingAlgorithm):
     INPUT_POINTS = 'INPUT_POINTS'
     INPUT_ZONES = 'INPUT_ZONES'
     FIELD_ID = 'FIELD_ID'
+    FIELD = 'FIELD'
+    BOOLEAN = 'BOOLEAN'
   
 
     def initAlgorithm(self, config):
@@ -99,15 +101,24 @@ class IndiceZonage(QgsProcessingAlgorithm):
             ) 
         )
         
-        '''self.addParameter( 
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.BOOLEAN,
+                self.tr('Calculer sur tous les champs numériques')
+            )
+        )
+        
+        self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD, 
-                self.tr( "Champ à rasteriser" ), 
+                self.tr( "Champ dont on veut l'indice" ), 
                 QVariant(),
-                self.INPUT,
+                self.INPUT_POINTS,
                 type=QgsProcessingParameterField.Numeric
             ) 
-        )'''
+        )
+        
+        
         
         self.addParameter(
             QgsProcessingParameterFileDestination(
@@ -127,9 +138,8 @@ class IndiceZonage(QgsProcessingAlgorithm):
         layer_points=self.parameterAsVectorLayer(parameters,self.INPUT_POINTS,context) 
         csv = self.parameterAsFileOutput(parameters, self.OUTPUT, context)
         zone_id = self.parameterAsString(parameters, self.FIELD_ID, context)
-        
+        choosed_field = self.parameterAsString(parameters, self.FIELD, context)
       
-         
          # Joindre les attributs par localisation
         alg_params = {
             'DISCARD_NONMATCHING': False,
@@ -145,11 +155,13 @@ class IndiceZonage(QgsProcessingAlgorithm):
         points_et_zones = QgsProcessingUtils.mapLayerFromString(alg_result['OUTPUT'],context)
        
         features = points_et_zones.getFeatures()
-       
-        
-        #liste contenant les noms des champs (uniquement numériques)
-        field_list=[field.name() for field in points_et_zones.fields() if field.type() in [4,6] or field.name() == zone_id] 
-        # 4 integer64, 6 Real
+              
+        if parameters[self.BOOLEAN] :
+            #liste contenant les noms des champs (uniquement numériques)
+            field_list=[field.name() for field in points_et_zones.fields() if field.type() in [4,6] or field.name() == zone_id] 
+            # 4 integer64, 6 Real
+        else :
+            field_list =[choosed_field, zone_id]
       
         #on créé une matrice ou 1 ligne = 1 feature
         data = np.array([[feat[field_name] for field_name in field_list] for feat in features])
