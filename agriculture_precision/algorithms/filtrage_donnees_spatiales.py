@@ -69,6 +69,8 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
     INPUT_CONFIANCE = 'INPUT_CONFIANCE'
     BOOLEAN = 'BOOLEAN'
     INPUT_VOISINS = 'INPUT_VOISINS'
+    INPUT_DISTANCE = 'INPUT_DISTANCE'
+    BOOLEAN_DISTANCE = 'BOOLEAN_DISTANCE'
 
     def initAlgorithm(self, config):
         """
@@ -118,6 +120,22 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
                 5
             )
         ) 
+        
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.BOOLEAN_DISTANCE,
+                self.tr('Considérer le voisinage dans une distance donnée')
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_DISTANCE, 
+                self.tr('Distance'),
+                QgsProcessingParameterNumber.Double,
+                5e-5
+            )
+        ) 
        
         self.addParameter(
             QgsProcessingParameterBoolean(
@@ -163,12 +181,15 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         #tri de la matrice selon les lignes
         sort_array = np.sort(dist_array,axis=1)
         
+        if parameters['BOOLEAN_DISTANCE'] :
+            min_dist_array = np.where(sort_array>parameters['INPUT_DISTANCE'],0, sort_array)
         #selection d'uniquement les premières "colonnes" : donc les plus proches voisins
         #creation d'une matrice ou chaque ligne correspond a une liste des distances des plus proches voisin pour un point (indiceligne = indice du point)
-        min_dist_array = np.delete(sort_array,0,1)
-        for k in range(parameters['INPUT_VOISINS'],len(sort_array[0])-1):
-            min_dist_array = np.delete(min_dist_array,parameters['INPUT_VOISINS'],1)
-            
+        else :
+            min_dist_array = np.delete(sort_array,0,1)
+            for k in range(parameters['INPUT_VOISINS'],len(sort_array[0])-1):
+                min_dist_array = np.delete(min_dist_array,parameters['INPUT_VOISINS'],1)
+                
         #nombre de points dans le shp
         nb_points = len(coordinates_arr)
         
