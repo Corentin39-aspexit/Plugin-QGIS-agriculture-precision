@@ -157,7 +157,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         
         #on va créer un dataframe avec les coordonnées, normalement les features sont parcourrues dans le même ordre
         features = layer.getFeatures()
-        coordinates_arr = np.array([[feat.geometry().asPoint()[0] for k in range(2)] for feat in features])
+        coordinates_arr = np.array([[feat.geometry().asPoint()[k] for k in range(2)] for feat in features])
         coordinates = pd.DataFrame(coordinates_arr, columns = ['X','Y'])
         df['X']=coordinates['X']
         df['Y']=coordinates['Y']    
@@ -205,6 +205,19 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         should be localised.
         """
         return self.tr('Action sur Vecteurs')
+
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Permet de détecter les données aberrantes (outliers) pour un champ donné (une colonne) d’une '
+            'couche vecteur à l’aide de plusieurs méthodes de filtrage. Les données aberrantes peuvent être '
+            'soit supprimées, soit identifiées dans une nouvelle colonne dans la couche vecteur. '
+            ' 3 sigmas : Sous l’hypothèse d’une distribution normale des données, la fonction identifie '
+            'les données dans les intervalles (moyenne +/- 1 écart type ; moyenne +/- 2 écarts type ; '
+            'moyenne +/- 3 écarts type ; '
+            ' Interquartile : aussi connue sous le nom de la règle de Tukey. '
+        ) 
+        return short_help
+
 
     def groupId(self):
         """
