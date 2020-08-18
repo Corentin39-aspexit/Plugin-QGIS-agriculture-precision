@@ -158,7 +158,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
               
         if parameters[self.BOOLEAN] :
             #liste contenant les noms des champs (uniquement numériques)
-            field_list=[field.name() for field in points_et_zones.fields() if field.type() in [4,6] or field.name() == zone_id] 
+            field_list=[field.name() for field in points_et_zones.fields() if field.type() in [2,4,6] or field.name() == zone_id] 
             # 4 integer64, 6 Real
         else :
             field_list =[choosed_field, zone_id]
@@ -175,14 +175,15 @@ class IndiceZonage(QgsProcessingAlgorithm):
         #Mettre toutes les valeurs du dataframe en réel
         df = df.astype(float)# !!! ne va pas marcher si l'identifiant de parcelle n'est pas un chiffre 
         
+        nb_points = len(df)
         #compte du nombre de points (non NaN) dans chaque zone
         nb_points_zones = df.groupby([zone_id]).count()
         nb_points_list = nb_points_zones.values.tolist()
         #avoir la variance pour chaque zone 
-        df = df.groupby([zone_id]).var()
-        df_list = df.values.tolist()
+        df_var_zones = df.groupby([zone_id]).var()
+        df_list = df_var_zones.values.tolist()
         
-        nb_points = len(df)
+        
         nb_columns=len(df_list[0])
         
         area_weighted_variance = [0 for k in range(nb_columns)]
@@ -194,7 +195,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
                 area_weighted_variance[i] += prop_variance
             k+=1
         #calcul de la variance totale
-        var_df = df.var()
+        var_df = df.drop(columns = zone_id).var()
         var_df_list = var_df.values.tolist()
         
         #calcul de l'indice RV pour chaque champ 
