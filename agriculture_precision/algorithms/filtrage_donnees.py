@@ -47,7 +47,8 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterVectorLayer,
                        QgsProcessingParameterFeatureSink,
                        QgsProcessingParameterField,
-                       QgsProcessingParameterEnum)
+                       QgsProcessingParameterEnum,
+                       QgsProcessingParameterBoolean)
 
 from qgis import processing 
 
@@ -64,6 +65,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
     FIELD = 'FIELD'
     INPUT_METHOD = 'INPUT_METHOD'
     INPUT_CONFIANCE = 'INPUT_CONFIANCE'
+    BOOLEAN = 'BOOLEAN'
 
     def initAlgorithm(self, config):
         """
@@ -104,6 +106,12 @@ class FiltreDonnees(QgsProcessingAlgorithm):
             )
         )
        
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.BOOLEAN,
+                self.tr('Supprimer les données aberrantes')
+            )
+        )
        
         self.addParameter(
             QgsProcessingParameterFeatureSink(
@@ -123,7 +131,9 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         
         #on ajoute un nouveau champ 'Aberrant' dans la couche en sortie 
         new_fields = layer.fields()
-        new_fields.append(QgsField('Aberrant', QVariant.Double))
+        
+        if not parameters['BOOLEAN'] :
+            new_fields.append(QgsField('Aberrant', QVariant.Double))
         
         (sink, dest_id) = self.parameterAsSink(parameters,self.OUTPUT,context, new_fields, layer.wkbType(), layer.sourceCrs())
         method=self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
@@ -161,7 +171,11 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         coordinates = pd.DataFrame(coordinates_arr, columns = ['X','Y'])
         df['X']=coordinates['X']
         df['Y']=coordinates['Y']    
-            
+        
+        if parameters['BOOLEAN'] :
+            indexNames = df[df['Aberrant'] == 1 ].index
+            df.drop(indexNames , inplace=True)
+            df.drop(columns = 'Aberrant')
         
         #on transforme le dataframe en liste pour les attributs
         df_list=df.values.tolist()
