@@ -72,6 +72,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
     INPUT_DISTANCE = 'INPUT_DISTANCE'
     BOOLEAN_DISTANCE = 'BOOLEAN_DISTANCE'
     INPUT_CV_MAX = 'INPUT_CV_MAX'
+    INPUT_SD = 'INPUT_SD'
 
     def initAlgorithm(self, config):
         """
@@ -100,7 +101,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
                 self.tr('Méthode filtre à appliquer'),
-                ['Règle des 3 sigmas','Coefficient de Variation']
+                ['Règle des 3 sigmas','Coefficient de Variation','IDW']
             )
         )
         
@@ -112,6 +113,14 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
             )
         )
         
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_SD, 
+                self.tr('Nombre deviance standard (IDW)'),
+                QgsProcessingParameterNumber.Integer,
+                2
+            )
+        ) 
         
         self.addParameter(
             QgsProcessingParameterNumber(
@@ -178,6 +187,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         (sink, dest_id) = self.parameterAsSink(parameters,self.OUTPUT,context, new_fields, layer.wkbType(), layer.sourceCrs())
         method=self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
         int_confiance=self.parameterAsEnum(parameters,self.INPUT_CONFIANCE,context)
+        nb_sd = self.parameterAsInt(parameters,self.INPUT_SD,context)
         field_to_filter = self.parameterAsString(parameters,self.FIELD, context) 
         
         #on créer une matrice avec les coordonnées
@@ -237,7 +247,8 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
             df['Aberrant'] = np.where((df[field_to_filter] > df['mean'] - int_confiance*df['sd']) & (df[field_to_filter] < df['mean'] + int_confiance*df['sd']), 0, 1)
             df = df.drop(columns = 'mean')
             df = df.drop(columns = 'sd')
-        else :
+        
+        elif method == 1:
            
             mean = []
             sd = []
@@ -264,6 +275,26 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
             df = df.drop(columns = 'CV_neighbors')
             df = df.drop(columns = 'nb_neighbors')
             df = df.drop(columns = 'nb_high_cv')
+          
+        else :
+            sd = []
+            denominateur = []
+            numerateur =[]
+            df_distances = pd.DataFrame(min_dist_array)
+            denom = (1/(df_distances**2)).sum(axis = 1)
+            values = []
+            for k in range (nb_points) :
+                sd.append(df.iloc[neighbors[k]][field_to_filter].std())
+                values.append(df.iloc[neighbors[k]][field_to_filter].values.tolist())
+            df['sd'] = sd
+            df_values = pd.DataFrame(values)
+            num = (df_values*(1/(df_distances**2))).sum(axis = 1)
+            df['interpolation']=num/denom
+            
+            df['Aberrant'] = np.where((df[field_to_filter] > df['interpolation'] - nb_sd*df['sd']) & (df[field_to_filter] < df['interpolation'] + nb_sd*df['sd']) , 0,1)
+            df = df.drop(columns = 'sd')
+            df = df.drop(columns = 'interpolation')
+          
           
         #on va créer un dataframe avec les coordonnées, normalement les features sont parcourrues dans le même ordre
         
