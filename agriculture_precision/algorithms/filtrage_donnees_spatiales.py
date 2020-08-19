@@ -71,6 +71,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
     INPUT_VOISINS = 'INPUT_VOISINS'
     INPUT_DISTANCE = 'INPUT_DISTANCE'
     BOOLEAN_DISTANCE = 'BOOLEAN_DISTANCE'
+    INPUT_CV_MAX = 'INPUT_CV_MAX'
 
     def initAlgorithm(self, config):
         """
@@ -99,7 +100,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
                 self.tr('Méthode filtre à appliquer'),
-                ['Règle des 3 sigmas']
+                ['Règle des 3 sigmas','Coefficient de Variation']
             )
         )
         
@@ -121,6 +122,14 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
             )
         ) 
         
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_CV_MAX, 
+                self.tr('Coefficient de variation maximum (Coefficient de variation)'),
+                QgsProcessingParameterNumber.Double,
+                2
+            )
+        ) 
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.BOOLEAN_DISTANCE,
@@ -222,15 +231,40 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
                 sd.append(df.iloc[neighbors[k]][field_to_filter].std())
             df['mean'] = mean
             df['sd'] = sd
+            
+            
             #met 1 quand c'est aberrant, 0 sinon
             df['Aberrant'] = np.where((df[field_to_filter] > df['mean'] - int_confiance*df['sd']) & (df[field_to_filter] < df['mean'] + int_confiance*df['sd']), 0, 1)
             df = df.drop(columns = 'mean')
             df = df.drop(columns = 'sd')
-        '''else :
-            quartiles = df[field_to_filter].quantile([0.25,0.75])
-            inter_quartiles = quartiles[0.75] - quartiles [0.25]
-            df['Aberrant'] = np.where((df[field_to_filter] > quartiles[0.25] - inter_quartiles*1.5) & (df[field_to_filter] < quartiles[0.75] + inter_quartiles*1.5), 0, 1)
-        '''
+        else :
+           
+            mean = []
+            sd = []
+            nb_neighbors = []
+            for k in range (nb_points) :
+                mean.append(df.iloc[neighbors[k]][field_to_filter].mean())
+                sd.append(df.iloc[neighbors[k]][field_to_filter].std())
+                nb_neighbors.append(len(neighbors[k]))
+            
+            df['mean'] = mean
+            df['sd'] = sd
+            df['CV_neighbors'] = 100 * (df['sd']/df['mean'])
+            df = df.drop(columns = 'sd')
+            df = df.drop(columns = 'mean')
+            df['nb_neighbors'] = nb_neighbors
+            
+            nb_high_cv = []
+            for k in range (nb_points) :
+                nb_high_cv.append(len(df.iloc[neighbors[k]][df['CV_neighbors']>parameters['INPUT_CV_MAX']]))
+            df['nb_high_cv'] = nb_high_cv
+            
+            df['Aberrant'] = np.where((df['nb_neighbors'] == df['nb_high_cv']), 1,0)
+            
+            df = df.drop(columns = 'CV_neighbors')
+            df = df.drop(columns = 'nb_neighbors')
+            df = df.drop(columns = 'nb_high_cv')
+          
         #on va créer un dataframe avec les coordonnées, normalement les features sont parcourrues dans le même ordre
         
         coordinates = pd.DataFrame(coordinates_arr, columns = ['X','Y'])
