@@ -48,6 +48,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFileDestination,
                        QgsProcessingParameterField,
                        QgsProcessingParameterBoolean,
+                       
                        QgsProcessingUtils,
                        NULL,
                        QgsMessageLog)
@@ -68,6 +69,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
     FIELD_ID = 'FIELD_ID'
     FIELD = 'FIELD'
     BOOLEAN = 'BOOLEAN'
+   
   
 
     def initAlgorithm(self, config):
@@ -117,7 +119,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
                 type=QgsProcessingParameterField.Numeric
             ) 
         )
-        
+             
         
         
         self.addParameter(
@@ -175,7 +177,8 @@ class IndiceZonage(QgsProcessingAlgorithm):
         #Mettre toutes les valeurs du dataframe en réel
         df = df.astype(float)# !!! ne va pas marcher si l'identifiant de parcelle n'est pas un chiffre 
         
-        nb_points = len(df)
+       
+        
         #compte du nombre de points (non NaN) dans chaque zone
         nb_points_zones = df.groupby([zone_id]).count()
         nb_points_list = nb_points_zones.values.tolist()
@@ -186,12 +189,19 @@ class IndiceZonage(QgsProcessingAlgorithm):
         
         nb_columns=len(df_list[0])
         
+        nb_points = [0 for k in range(nb_columns)]
+        for i in range (len(nb_points_list)):
+            for k in range(len(nb_points_list[0])):
+                nb_points[k] += nb_points_list[i][k]
+        #on retire les points qui ne sont pas dans les zones
+        df = df.dropna(subset = ['DN'])
+        
         area_weighted_variance = [0 for k in range(nb_columns)]
         #calcul de la variance pour chaque zone et pour chaque champ
         k = 0
         for variance in df_list :
             for i in range(nb_columns):
-                prop_variance = variance[i]*(nb_points_list[k][i]/nb_points)
+                prop_variance = variance[i]*(nb_points_list[k][i]/nb_points[i])
                 area_weighted_variance[i] += prop_variance
             k+=1
         #calcul de la variance totale
