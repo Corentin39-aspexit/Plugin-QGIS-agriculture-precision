@@ -201,13 +201,19 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         sort_array = np.sort(dist_array,axis=1)
         
         if parameters['BOOLEAN_DISTANCE'] :
-            min_dist_array = np.where(sort_array>parameters['INPUT_DISTANCE'],0, sort_array)
+            min_dist_array = np.where(sort_array>parameters['INPUT_DISTANCE'], np.nan , sort_array)
+              #on supprime le point des données pour IDW
+            if method == 2:
+                min_dist_array = min_dist_array[:,1:]
         #selection d'uniquement les premières "colonnes" : donc les plus proches voisins
         #creation d'une matrice ou chaque ligne correspond a une liste des distances des plus proches voisin pour un point (indiceligne = indice du point)
         else :
-            min_dist_array = np.delete(sort_array,0,1)
-            for k in range(parameters['INPUT_VOISINS'],len(sort_array[0])-1):
+            min_dist_array = np.delete(sort_array,parameters['INPUT_VOISINS'],1)
+            for k in range(parameters['INPUT_VOISINS']+1,len(sort_array[0])-1):
                 min_dist_array = np.delete(min_dist_array,parameters['INPUT_VOISINS'],1)
+            #on supprime le point des données pour IDW
+            if method == 2: 
+                min_dist_array = np.delete(min_dist_array,0,1)
                 
         #nombre de points dans le shp
         nb_points = len(coordinates_arr)
@@ -215,8 +221,8 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         #creation d'une liste de liste : liste des index des voisins les plus proches pour chaque point
         neighbors = []
         for k in range (nb_points) :
-            list = np.nonzero(np.in1d(dist_array[k],min_dist_array[k]))[0].tolist()
-            neighbors.append(list)
+            l = np.nonzero(np.in1d(dist_array[k],min_dist_array[k]))[0].tolist()
+            neighbors.append(l)
         
         
         #création du dataframe de données
@@ -270,7 +276,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
                 nb_high_cv.append(len(df.iloc[neighbors[k]][df['CV_neighbors']>parameters['INPUT_CV_MAX']]))
             df['nb_high_cv'] = nb_high_cv
             
-            df['Aberrant'] = np.where((df['nb_neighbors'] == df['nb_high_cv']), 1,0)
+            df['Aberrant'] = np.where((df['nb_neighbors'] -1 <= df['nb_high_cv']), 1,0)
             
             df = df.drop(columns = 'CV_neighbors')
             df = df.drop(columns = 'nb_neighbors')
