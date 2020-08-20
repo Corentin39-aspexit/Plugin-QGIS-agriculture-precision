@@ -31,27 +31,34 @@ __copyright__ = '(C) 2020 by ASPEXIT'
 __revision__ = '$Format:%H$'
 
 
-from qgis.PyQt.QtCore import QCoreApplication
+
+from qgis.PyQt.QtCore import QCoreApplication#, QVariant
 from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
                        QgsProcessingAlgorithm,
                        QgsApplication,
                        QgsVectorLayer,
                        QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterVectorDestination)
-
-
+                       QgsProcessingParameterFolderDestination,
+                       QgsProcessingParameterEnum)
 
 from qgis import processing 
 
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-class EnveloppeConvexePoints(QgsProcessingAlgorithm):
+class Correlation(QgsProcessingAlgorithm):
     """
     
     """ 
 
     OUTPUT= 'OUTPUT'
     INPUT = 'INPUT'
+    FIELD = 'FIELD'
+    INPUT_METHOD = 'INPUT_METHOD'
+    INPUT_CONFIANCE = 'INPUT_CONFIANCE'
+    method_names = ['pearson','kendall','spearman']
 
     def initAlgorithm(self, config):
         """
@@ -62,15 +69,22 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur à traiter'),
-                [QgsProcessing.TypeVectorPoint]
+                self.tr('Couche vecteur')
             )
         )
         
         self.addParameter(
-            QgsProcessingParameterVectorDestination(
+            QgsProcessingParameterEnum(
+                self.INPUT_METHOD,
+                self.tr('Méthode de correlation'),
+                self.method_names
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterFolderDestination(
                 self.OUTPUT,
-                self.tr('Enveloppe')
+                self.tr('Graphique'),
             )
         )
         
@@ -81,27 +95,41 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         Here is where the processing itself takes place.
         """
         
-        # Regrouper
-        alg_params = {
-            'FIELD': None,
-            'INPUT': parameters[self.INPUT],
-            'OUTPUT': 'memory:'
-        }
-        alg_result = processing.run('native:dissolve', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        layer=self.parameterAsVectorLayer(parameters,self.INPUT,context) 
+        fn = self.parameterAsFileOutput(parameters,self.OUTPUT,context)
+        method=self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
         
-        couche_groupee = alg_result['OUTPUT']
+        features = layer.getFeatures()
+       
+        #liste contenant les noms des champs
+        field_list=[field.name() for field in layer.fields() if field.typeName() in ["Integer","Real"]] #peut-être qu'il y a d'autres types numériques... difficile a trouver
+        
+        #on créé une matrice ou 1 ligne = 1 feature
+        data = np.array([[feat[field_name] for field_name in field_list] for feat in features])
+                
+        #on créer le dataframe avec les données et les noms des colonnes
+        df = pd.DataFrame(data, columns = field_list)
+        
+        #on créer la matrice des graphiques de corrélation
+        axes = pd.plotting.scatter_matrix(df,alpha=0.2)
+        
+        #on ajoute un titre au graphique
+        plt.suptitle(layer.name()+'_'+self.method_names[method])
+        
+        #on créer une matrice numpy avec les corrélations
+        corr = df.corr(self.method_names[method])
+        corr=corr.to_numpy()
+        
+        # on ajoute les corrélations dans la partie supérieure de la matrice des graphiques de corrélation
+        for i, j in zip(* np.triu_indices_from(axes, k=1)):
+            axes[i, j].annotate("%.3f" %corr[i,j], (0.8, 0.8), xycoords='axes fraction', ha='center', va='center')
+        
+        #on sauvegarde dans l'adresse en sortie
+        plt.savefig(fn+'\\figure_correlation_' + self.method_names[method] + '_' + layer.name() +'.jpg')
+        
+        return{self.OUTPUT : fn} 
+      
 
-        # Enveloppe convexe
-        alg_params = {
-            'INPUT': couche_groupee,
-            'OUTPUT': parameters[self.OUTPUT]
-        }
-        alg_result = processing.run('native:convexhull', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-        
-        enveloppe_conv = alg_result['OUTPUT']
-        
-        return{self.OUTPUT : enveloppe_conv} 
-   
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -110,7 +138,7 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Réaliser une enveloppe convexe à partir de points"
+        return 'Calcul du coefficient de correlation'
 
     def displayName(self):
         """
@@ -125,7 +153,17 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         should be localised.
         """
         return self.tr('Action sur Vecteurs')
-
+    
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Permet de calculer un indice de corrélation entre deux champs (colonne) d’une couche vecteur. '
+            'Plusieurs indices sont disponibles :'
+            ' Corrélation de Pearson, '
+            'Corrélation de Spearman, '
+            'Corrélation de Kendall.'
+        )
+        return short_help
+        
     def groupId(self):
         """
         Returns the unique ID of the group this algorithm belongs to. This
@@ -140,4 +178,4 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return EnveloppeConvexePoints()
+        return Correlation()
