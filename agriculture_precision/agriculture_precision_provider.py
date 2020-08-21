@@ -33,7 +33,7 @@ __revision__ = '$Format:%H$'
 from qgis.core import QgsProcessingProvider
 from .algorithms.classification_raster import ClassifyRaster
 from .algorithms.enveloppe_convexe_points import EnveloppeConvexePoints
-from .algorithms.echantillonnage_raster import EchantillonageRaster
+from .algorithms.echantillonnage_raster import EchantillonnageRaster
 from .algorithms.filtrage_donnees import FiltreDonnees
 from .algorithms.correlations import Correlation
 from .algorithms.interpolation_points import InterpolationPoints
@@ -64,7 +64,7 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         """
         #Raster
         self.addAlgorithm(ClassifyRaster())
-        self.addAlgorithm(EchantillonageRaster())
+        self.addAlgorithm(EchantillonnageRaster())
         self.addAlgorithm(ZonageClassification())
         #Vecteur        
         self.addAlgorithm(Correlation())
