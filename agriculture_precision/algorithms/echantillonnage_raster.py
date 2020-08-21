@@ -47,7 +47,7 @@ from .functions.fonctions_repartition import *
 
 from qgis import processing 
 
-class EchantillonageRaster(QgsProcessingAlgorithm):
+class EchantillonnageRaster(QgsProcessingAlgorithm):
     """
     
     """
@@ -263,4 +263,4 @@ class EchantillonageRaster(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return EchantillonageRaster()
+        return EchantillonnageRaster()

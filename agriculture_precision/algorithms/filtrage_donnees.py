@@ -48,7 +48,8 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFeatureSink,
                        QgsProcessingParameterField,
                        QgsProcessingParameterEnum,
-                       QgsProcessingParameterBoolean)
+                       QgsProcessingParameterBoolean,
+                       QgsProcessingParameterNumber)
 
 from qgis import processing 
 
@@ -66,6 +67,9 @@ class FiltreDonnees(QgsProcessingAlgorithm):
     INPUT_METHOD = 'INPUT_METHOD'
     INPUT_CONFIANCE = 'INPUT_CONFIANCE'
     BOOLEAN = 'BOOLEAN'
+    INPUT_FIX_VAL = 'INPUT_FIX_VAL'
+    INPUT_UP_BOUND = 'INPUT_UP_BOUND'
+    INPUT_LOW_BOUND = 'INPUT_LOW_BOUND'
 
     def initAlgorithm(self, config):
         """
@@ -94,9 +98,36 @@ class FiltreDonnees(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
                 self.tr('Méthode filtre à appliquer'),
-                ['Règle des 3 sigmas','Règle de Tukey']
+                ['Règle des 3 sigmas','Règle de Tukey','valeur fixe']
             )
         )
+        
+        
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_FIX_VAL,
+                self.tr('Intervalle de filtrage (valeur fixe)'),
+                ['Borne inférieure','Borne supérieure','Intervalle (borne inférieure et supérieure']
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_UP_BOUND,
+                self.tr('Borne superieure'),
+                QgsProcessingParameterNumber.Double,
+                5
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_LOW_BOUND,
+                self.tr('Borne inferieure'),
+                QgsProcessingParameterNumber.Double,
+                0.5
+            )
+        )        
         
         self.addParameter(
             QgsProcessingParameterEnum(
@@ -137,6 +168,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         
         (sink, dest_id) = self.parameterAsSink(parameters,self.OUTPUT,context, new_fields, layer.wkbType(), layer.sourceCrs())
         method=self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
+        method_fix_val = self.parameterAsEnum(parameters,self.INPUT_FIX_VAL,context)
         int_confiance=self.parameterAsEnum(parameters,self.INPUT_CONFIANCE,context)
         field_to_filter = self.parameterAsString(parameters,self.FIELD, context) 
         
@@ -160,10 +192,18 @@ class FiltreDonnees(QgsProcessingAlgorithm):
             #met 1 quand c'est aberrant, 0 sinon
             df['Aberrant'] = np.where((df[field_to_filter] > mean - int_confiance*sd) & (df[field_to_filter] < mean + int_confiance*sd) , 0, 1)
         
-        else :
+        elif method == 1 :
             quartiles = df[field_to_filter].quantile([0.25,0.75])
             inter_quartiles = quartiles[0.75] - quartiles [0.25]
             df['Aberrant'] = np.where((df[field_to_filter] > quartiles[0.25] - inter_quartiles*1.5) & (df[field_to_filter] < quartiles[0.75] + inter_quartiles*1.5), 0, 1)
+        
+        else :
+            if method_fix_val == 0 :
+                df['Aberrant'] = np.where(df[field_to_filter] >= parameters['INPUT_LOW_BOUND'] , 0, 1)
+            elif method_fix_val == 1 :
+                df['Aberrant'] = np.where(df[field_to_filter] <= parameters['INPUT_UP_BOUND'] , 0, 1)
+            else :
+                df['Aberrant'] = np.where((df[field_to_filter] >= parameters['INPUT_LOW_BOUND']) & (df[field_to_filter] <= parameters['INPUT_UP_BOUND']) , 0, 1)
         
         #on va créer un dataframe avec les coordonnées, normalement les features sont parcourrues dans le même ordre
         features = layer.getFeatures()
