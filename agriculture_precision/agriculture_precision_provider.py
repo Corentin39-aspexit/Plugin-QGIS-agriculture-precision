@@ -41,7 +41,7 @@ from .algorithms.echantillonnage_polygone import EchantillonnagePolygone
 from .algorithms.zonage_par_classif import ZonageClassification
 from .algorithms.tesselations import Tesselations
 from .algorithms.xml_to_shp import XmlToShp
-#from .algorithms.indice_zonage import IndiceZonage
+from .algorithms.indice_zonage import IndiceZonage
 from .algorithms.filtrage_donnees_spatiales import FiltreDonneesSpatiales
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
@@ -74,7 +74,7 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         self.addAlgorithm(FiltreDonnees())
         self.addAlgorithm(Tesselations())
         self.addAlgorithm(InterpolationPoints())
-        #self.addAlgorithm(IndiceZonage())
+        self.addAlgorithm(IndiceZonage())
         self.addAlgorithm(FiltreDonneesSpatiales())
         #Autre
         self.addAlgorithm(XmlToShp())
