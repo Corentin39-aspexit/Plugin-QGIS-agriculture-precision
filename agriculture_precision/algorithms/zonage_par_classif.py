@@ -128,8 +128,8 @@ class ZonageClassification(QgsProcessingAlgorithm):
         layer = self.parameterAsRasterLayer(parameters,self.INPUT,context)
         output_path = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
         # création d'un dossier temporaire pour les fonctions GRASS
-        tempfolder = tempfile.mkdtemp()
-        
+        tempfolder = tempfile.mkdtemp() + '/'
+        #tempfolder2 = 'C:/Users/Utilisateur/Documents/ASPEXIT/plugin_agriculture_precision/data_test/Temporaires'
         nombre_classes = self.parameterAsInt(parameters,self.INPUT_N_CLASS,context)
         method = self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
         
@@ -164,11 +164,11 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'TARGET_CRS': 'ProjectCrs',
             'X_RESOLUTION': None,
             'Y_RESOLUTION': None,
-            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
         }
         coupe = processing.run('gdal:cliprasterbymasklayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
-
+        
         # Classification raster
         alg_params = {
             'INPUT': coupe['OUTPUT'],
@@ -178,6 +178,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         }
         classe = processing.run('Agriculture de précision:Classification raster', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
+        
         # r.neighbors
         alg_params = {
             '-a': False,
