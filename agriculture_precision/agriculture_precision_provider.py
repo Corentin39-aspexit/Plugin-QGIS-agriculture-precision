@@ -43,6 +43,7 @@ from .algorithms.tesselations import Tesselations
 from .algorithms.xml_to_shp import XmlToShp
 from .algorithms.indice_zonage import IndiceZonage
 from .algorithms.filtrage_donnees_spatiales import FiltreDonneesSpatiales
+from .algorithms.grille_orientee import GrilleOrientee
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
 
@@ -76,6 +77,7 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         self.addAlgorithm(InterpolationPoints())
         self.addAlgorithm(IndiceZonage())
         self.addAlgorithm(FiltreDonneesSpatiales())
+        self.addAlgorithm(GrilleOrientee())
         #Autre
         self.addAlgorithm(XmlToShp())
         
