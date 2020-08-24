@@ -132,7 +132,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_CONFIANCE,
-                self.tr('Intervale de confiance (3 sigmas)'),
+                self.tr('Intervalle de confiance (3 sigmas)'),
                 ['68%','95%', '99,5%']
             )
         )
