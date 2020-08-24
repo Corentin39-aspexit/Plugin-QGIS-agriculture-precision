@@ -108,7 +108,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_CONFIANCE,
-                self.tr('Intervale de confiance (3 sigmas)'),
+                self.tr('Intervalle de confiance (3 sigmas)'),
                 ['68%','95%', '99,5%']
             )
         )
@@ -358,13 +358,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         short_help = self.tr(
-            'Permet de détecter les données aberrantes (outliers) pour un champ donné (une colonne) d’une '
-            'couche vecteur à l’aide de plusieurs méthodes de filtrage. Les données aberrantes peuvent être '
-            'soit supprimées, soit identifiées dans une nouvelle colonne dans la couche vecteur. '
-            ' 3 sigmas : Sous l’hypothèse d’une distribution normale des données, la fonction identifie '
-            'les données dans les intervalles (moyenne +/- 1 écart type ; moyenne +/- 2 écarts type ; '
-            'moyenne +/- 3 écarts type ; '
-            ' Interquartile : aussi connue sous le nom de la règle de Tukey. '
+            ' '
         ) 
         return short_help
 
