@@ -47,7 +47,7 @@ from qgis.core import (QgsProcessing,
 from qgis import processing 
 from .functions.general import *
 
-class Tesselations(QgsProcessingAlgorithm):
+class Tessellations(QgsProcessingAlgorithm):
     """
     
     """ 
@@ -76,7 +76,7 @@ class Tesselations(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Tesselation type'),
+                self.tr('Tessellation type'),
                 ['Thiessen','Voronoi','Delaunay']
             )
         )
@@ -84,7 +84,7 @@ class Tesselations(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-                self.tr('Tesselations')
+                self.tr('Tessellations')
             )
         )
         
@@ -188,7 +188,7 @@ class Tesselations(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "V - Tesselations"
+        return "V - Tessellations"
 
     def displayName(self):
         """
@@ -206,7 +206,7 @@ class Tesselations(QgsProcessingAlgorithm):
         
     def shortHelpString(self):
         short_help = self.tr(
-            'Allows to build tesselations from point vector data.'
+            'Allows to build tessellations from point vector data.'
             '\nprovided by ASPEXIT\n'
             'author : Lisa Rollier'   
         )
@@ -226,4 +226,4 @@ class Tesselations(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return Tesselations()
+        return Tessellations()
