@@ -79,7 +79,7 @@ class GrilleOrientee(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur'),
+                self.tr('Point layer'),
                 [QgsProcessing.TypeVectorPoint]
             )
         )
@@ -87,13 +87,13 @@ class GrilleOrientee(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.BOOLEAN,
-                self.tr("Entrer l'angle de rotation manuellement")
+                self.tr("Enter rotation angle manually")
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_ROTATION, 
-                self.tr('Angle de rotation (si entrée manuelle), en degré'),
+                self.tr('Rotation angle (if manual entry), in degrees'),
                 QgsProcessingParameterNumber.Double
             )
         ) 
@@ -101,7 +101,7 @@ class GrilleOrientee(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_SIZE, 
-                self.tr('taille de la grille (en mètre)'),
+                self.tr('Grid resolution (in meters)'),
                 QgsProcessingParameterNumber.Double,
                 5
             )
@@ -110,7 +110,7 @@ class GrilleOrientee(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr('Grille orientée')
+                self.tr('Oriented grid')
             )
         )
         
@@ -180,8 +180,7 @@ class GrilleOrientee(QgsProcessingAlgorithm):
             principal_headir = st.median(head_dir)
             angle = -principal_headir
             
-        
-        
+
         # Rotation
         alg_params = {
             'ANCHOR': str(x)+','+str(y),
@@ -201,7 +200,7 @@ class GrilleOrientee(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Grille dans le sens du rang'
+        return 'V - Grid oriented in the direction of rows'
 
     def displayName(self):
         """
@@ -215,11 +214,15 @@ class GrilleOrientee(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Data Manipulation')
 
     def shortHelpString(self):
         short_help = self.tr(
-            ''
+            'For a given point layer oriented in a particular direction'
+            '(following rows or a machine passage for example), the function '
+            'builds a grid oriented in the majority direction of the points. '
+            'The size of the grid is defined by the user.  Prerequisite: The order'
+            'of the points in the layer must follow the data acquisition.'
         ) 
         return short_help
 
@@ -232,7 +235,7 @@ class GrilleOrientee(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'data_manipulation'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

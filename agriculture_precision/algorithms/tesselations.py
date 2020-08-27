@@ -69,7 +69,7 @@ class Tesselations(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur à traiter'),
+                self.tr('Point layer'),
                 [QgsProcessing.TypeVectorPoint]
             )
         )
@@ -77,7 +77,7 @@ class Tesselations(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Methode'),
+                self.tr('Tesselation type'),
                 ['Thiessen','Voronoi','Delaunay']
             )
         )
@@ -126,7 +126,7 @@ class Tesselations(QgsProcessingAlgorithm):
                 'INPUT': parameters[self.INPUT],
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
             }
-            enveloppe_convexe = processing.run('Agriculture de précision:Réaliser une enveloppe convexe à partir de points', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+            enveloppe_convexe = processing.run('Precision Agriculture:V - Convex Hull creation', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
             # Couper
             alg_params = {
@@ -169,7 +169,7 @@ class Tesselations(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Tesselations (vecteur)"
+        return "V - Tesselations"
 
     def displayName(self):
         """
@@ -183,13 +183,11 @@ class Tesselations(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Data Manipulation')
         
     def shortHelpString(self):
         short_help = self.tr(
-            'Permet de construire des tesselations à partir de données vecteur ponctuelles.'
-            ' Plusieurs méthodes sont disponibles : Triangulation de Delaunay ;'
-            ' Polygones de Voronoi ; Polygones de Thiessen;'
+            'Allows to build tesselations from point vector data.'
         )
         return short_help
 
@@ -201,7 +199,7 @@ class Tesselations(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'data_manipulation'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

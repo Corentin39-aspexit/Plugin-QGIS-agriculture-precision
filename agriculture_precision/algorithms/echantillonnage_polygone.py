@@ -72,7 +72,7 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur à traiter'),
+                self.tr('Polygon layer'),
                 [QgsProcessing.TypeVectorPolygon]
             )
         )
@@ -80,15 +80,15 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Methode echantillonnage'),
-                ['Aléatoire','Régulier']
+                self.tr('Sampling method'),
+                ['Random','Regular']
             )
         )
         
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_N_POINTS, 
-                self.tr('Nombre de points (approximatif pour echantillonnage régulier)'),
+                self.tr('Number of points (approximative value for regular sampling)'),
                 QgsProcessingParameterNumber.Integer,
                 10
             )
@@ -97,7 +97,7 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_BUFFER, 
-                self.tr('Distance aux bords sans échantillon (en mètres)'),
+                self.tr('Minimum distance to edges (in meters)'),
                 QgsProcessingParameterNumber.Double,
                 5
             )
@@ -106,14 +106,14 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.BOOL_DISTANCE,
-                self.tr('Echantillonner avec la distance (Echantillonnage regulier)')
+                self.tr('Sampling with minimum distance between points (for regular sampling)')
             )
         )
        
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_DISTANCE, 
-                self.tr('Distance entre les points (Echantillonnage régulier)'),
+                self.tr('Minimum distance between points (for regular sampling)'),
                 QgsProcessingParameterNumber.Integer,
                 30
             )
@@ -122,7 +122,7 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr('Points')
+                self.tr('Sampling points')
             )
         )
         
@@ -234,7 +234,7 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Echantillonnage à l'intérieur d'un polygone"
+        return "V - Sampling within polygon"
 
     def displayName(self):
         """
@@ -248,14 +248,12 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Spatial Analysis')
     
     def shortHelpString(self):
         short_help = self.tr(
-            'Permet de réaliser un échantillonnage dans un polygone. Le nombre de points est défini par '
-            'l’utilisateur et plusieurs schémas d’échantillonnage sont disponibles. '
-            'Aléatoire : les points sont placés aléatoirement ; '
-            'Régulier : Les points sont régulièrement répartis.'
+            'Allows to carry out a sampling in a polygon. The number of '
+            'points is defined by the user and several sampling schemes are available.'
             )
         return short_help
 
@@ -267,7 +265,7 @@ class EchantillonnagePolygone(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'spatial_analysis'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

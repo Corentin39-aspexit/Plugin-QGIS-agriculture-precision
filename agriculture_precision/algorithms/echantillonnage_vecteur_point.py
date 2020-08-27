@@ -40,7 +40,7 @@ from qgis.core import (QgsProcessing,
                        QgsRasterLayer,
                        QgsProcessingParameterNumber,
                        QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterFeatureSink,
+                       QgsProcessingParameterVectorDestination,
                        QgsProcessingParameterEnum,
                        QgsProcessingParameterField,
                        QgsField,
@@ -55,13 +55,14 @@ from qgis import processing
 import numpy as np
 import pandas as pd
 
-class ClassificationVecteurPoint(QgsProcessingAlgorithm):
+class EchantillonageVecteurPoint(QgsProcessingAlgorithm):
     """
     
     """
     
     OUTPUT= 'OUTPUT'
     INPUT = 'INPUT'
+    INPUT_METHOD_ECH = 'INPUT_METHOD_ECH'
     INPUT_METHOD_CLASS = 'INPUT_METHOD_CLASS'
     INPUT_N_CLASS='INPUT_N_CLASS'
     INPUT_ECHANTILLON = 'INPUT_ECHANTILLON'
@@ -76,17 +77,26 @@ class ClassificationVecteurPoint(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Vector to classify'),
+                self.tr('Vector layer to sample'),
                 [QgsProcessing.TypeVectorPoint]
             )
         )
 
+       
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_METHOD_ECH,
+                self.tr("Sampling method"),
+                ['Random sampling', 'Stratified sampling']               
+            )
+        )
+        
         
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD_CLASS,
-                self.tr('Classification method'),
-                ['Quantiles', 'Equal-intervals']                
+                self.tr('Classification method (for stratified sampling)'),
+                ['Quantiles', 'Equal intervals']                
             )
         )
         
@@ -114,9 +124,21 @@ class ClassificationVecteurPoint(QgsProcessingAlgorithm):
     
         
         self.addParameter(
-            QgsProcessingParameterFeatureSink(
+            QgsProcessingParameterNumber(
+                self.INPUT_ECHANTILLON, 
+                self.tr("Number of samples"),
+                QgsProcessingParameterNumber.Integer,
+                10,
+                False,
+                2,
+                100
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr('Classified vector')
+                self.tr('Sampling points')
             )
         )
         
@@ -129,56 +151,67 @@ class ClassificationVecteurPoint(QgsProcessingAlgorithm):
         
         layer=self.parameterAsVectorLayer(parameters,self.INPUT,context) 
         
-        new_fields = layer.fields()
-        new_fields.append(QgsField('Classes', QVariant.Double))
         
+        fn = self.parameterAsOutputLayer(parameters,self.OUTPUT,context)
+        method = self.parameterAsEnum(parameters,self.INPUT_METHOD_ECH,context)
         
-        (sink,fn) = self.parameterAsSink(parameters,self.OUTPUT,context, new_fields, layer.wkbType(), layer.sourceCrs())
-        method = self.parameterAsEnum(parameters,self.INPUT_METHOD_CLASS,context)
-       
-              
-        features = layer.getFeatures()
-        
-        #liste contenant les noms des champs
-        field_list=[field.name() for field in layer.fields()]
-        
-        #on créé une matrice ou 1 ligne = 1 feature
-        data = np.array([[feat[field_name] for field_name in field_list] for feat in features])
-                
-        #on créer le dataframe avec les données et les noms des colonnes
-        df = pd.DataFrame(data, columns = field_list)
-        
-        array = df[parameters['FIELD']].values
-        out_array = array[:]
-        
-        if method == 0 :
-           out_array = rep_quantiles(parameters['INPUT_N_CLASS'],array,out_array)
-        else :
-           out_array = intervalles_egaux(parameters['INPUT_N_CLASS'],array,out_array)
-           
-        df['Classes']=out_array
-        #on va créer un dataframe avec les coordonnées, normalement les features sont parcourrues dans le même ordre
-        features = layer.getFeatures()
-        coordinates_arr = np.array([[feat.geometry().asPoint()[k] for k in range(2)] for feat in features])
-        coordinates = pd.DataFrame(coordinates_arr, columns = ['X','Y'])
-        df['X']=coordinates['X']
-        df['Y']=coordinates['Y']    
-        
-        #on transforme le dataframe en liste pour les attributs
-        df_list=df.values.tolist()
-        
-        featureList=[]
-        
-        #on va parcourrir chaque ligne, ie chaque feature
-        for row in df_list:
-            feat = QgsFeature()
-            feat.setAttributes(row[0:-2]) #row = une ligne, on exclu les deux dernières colonnes qui sont les coordonnées
-            feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(row[-2],row[-1]))) #on définit la position de chaque point 
-            featureList.append(feat) #on ajoute la feature à la liste
+        if method == 0 : 
+          
+            # Sélection aléatoire
+            alg_params = {
+                'INPUT': parameters['INPUT'],
+                'METHOD': 0,
+                'NUMBER': parameters[self.INPUT_ECHANTILLON]
+            }
+            selection_aleatoire = processing.run('qgis:randomselection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
-        #on ajoute la liste des features à la couche de sortie
-        sink.addFeatures(featureList)
+            # Extraire les entités sélectionnées
+            alg_params = {
+                'INPUT': selection_aleatoire['OUTPUT'],
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }
+            extraction_selection = processing.run('native:saveselectedfeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        else :
+                
+            # Classification vecteur
+            alg_params = {
+                'FIELD': parameters['FIELD'],
+                'INPUT': parameters['INPUT'],
+                'INPUT_METHOD_CLASS': parameters['INPUT_METHOD_CLASS'],
+                'INPUT_N_CLASS': parameters['INPUT_N_CLASS'],
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }
+            layer_class = processing.run('Precision Agriculture:V - Classification', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+         
+                
+            
+            # Sélection aléatoire parmi des sous-ensembles
+            alg_params = {
+                'FIELD': 'Classes',
+                'INPUT': layer_class['OUTPUT'],
+                'METHOD': 0,
+                'NUMBER': parameters['INPUT_ECHANTILLON']
+            }
+            selection_aleatoire = processing.run('qgis:randomselectionwithinsubsets', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+            # Extraire les entités sélectionnées
+            alg_params = {
+                'INPUT': selection_aleatoire['OUTPUT'],
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }
+            extraction_selection = processing.run('native:saveselectedfeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        # Ajouter les coordonnees dans un vecteur
+        alg_params = {
+            'CRS': 'ProjectCrs',
+            'INPUT': extraction_selection['OUTPUT'],
+            'PREFIX': '',
+            'OUTPUT': parameters[self.OUTPUT]
+        }
+        ajout_xy = processing.run('native:addxyfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
         
+                   
         return{self.OUTPUT : fn} 
 
    
@@ -190,7 +223,7 @@ class ClassificationVecteurPoint(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "V - Classification"
+        return "V - Sampling over a vector"
 
     def displayName(self):
         """
@@ -204,7 +237,7 @@ class ClassificationVecteurPoint(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Classification - Zoning')
+        return self.tr('Spatial Analysis')
 
     def groupId(self):
         """
@@ -214,17 +247,10 @@ class ClassificationVecteurPoint(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'classification_zoning'
-    
-    def shortHelpString(self):
-        short_help = self.tr(
-            ''
-        )
-        return short_help
-
+        return 'spatial_analysis'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return ClassificationVecteurPoint()
+        return EchantillonageVecteurPoint()

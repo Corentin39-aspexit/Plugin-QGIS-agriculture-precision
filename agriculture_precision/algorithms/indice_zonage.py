@@ -81,7 +81,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_POINTS,
-                self.tr('Vecteur points'),
+                self.tr('Point layer'),
                 [QgsProcessing.TypeVectorPoint]
             )
         )
@@ -89,7 +89,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_ZONES,
-                self.tr('Vecteur zones'),
+                self.tr('Zones layer'),
                 [QgsProcessing.TypeVectorPolygon]
             )
         )
@@ -97,7 +97,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
         self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD_ID,
-                self.tr( "Champ identifiant des zones" ), 
+                self.tr( "Zones identifiant" ), 
                 QVariant(),
                 self.INPUT_ZONES
             ) 
@@ -106,14 +106,14 @@ class IndiceZonage(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.BOOLEAN,
-                self.tr('Calculer sur tous les champs numériques')
+                self.tr('Index calculation for all numeric fields')
             )
         )
         
         self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD, 
-                self.tr( "Champ dont on veut l'indice" ), 
+                self.tr( "Fields for which the zoning index is calculated" ), 
                 QVariant(),
                 self.INPUT_POINTS,
                 type=QgsProcessingParameterField.Numeric
@@ -125,7 +125,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.OUTPUT,
-                self.tr('Fichier contenant les indices'),
+                self.tr('File'),
                 '.csv',
             )
         )
@@ -244,7 +244,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Indice de Zonage'
+        return 'V - Zoning index'
 
     def displayName(self):
         """
@@ -258,17 +258,17 @@ class IndiceZonage(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Spatial Analysis')
 
     def shortHelpString(self):
         short_help = self.tr(
-            'Permet de détecter les données aberrantes (outliers) pour un champ donné (une colonne) d’une '
-            'couche vecteur à l’aide de plusieurs méthodes de filtrage. Les données aberrantes peuvent être '
-            'soit supprimées, soit identifiées dans une nouvelle colonne dans la couche vecteur. '
-            ' 3 sigmas : Sous l’hypothèse d’une distribution normale des données, la fonction identifie '
-            'les données dans les intervalles (moyenne +/- 1 écart type ; moyenne +/- 2 écarts type ; '
-            'moyenne +/- 3 écarts type ; '
-            ' Interquartile : aussi connue sous le nom de la règle de Tukey. '
+            'Allows to calculate a zoning quality indicator in relation to '
+            'available auxiliary information. User should fill in the zoning '
+            'vector layer, and the point vector layer to which the zoning is '
+            'to be compared. \n This function calculates the variance reduction '
+            '(RV) index [from Bobryk et al. (2016) Validating a Digital Soil '
+            'Map with Corn Yield Data for Precision Agriculture Decision Support,'
+            'Agronomy Journal, 108, 1-9]'
         ) 
         return short_help
 
@@ -281,7 +281,7 @@ class IndiceZonage(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'spatial_analysis'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

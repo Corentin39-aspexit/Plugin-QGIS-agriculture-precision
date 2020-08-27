@@ -68,7 +68,7 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT,
-                self.tr('Couche raster a traiter')
+                self.tr('Raster layer')
             )
         )
 
@@ -76,8 +76,8 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD_ECH,
-                self.tr("Choix de la méthode d'echantillonage"),
-                ['Echantillonnage seulement', 'Classer puis echantillonner']               
+                self.tr("Sampling method"),
+                ['Random sampling', 'Stratified sampling']               
             )
         )
         
@@ -85,15 +85,15 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD_CLASS,
-                self.tr('Choix de la méthode de classification'),
-                ['Quantiles', 'Intervalles Egaux']#, 'Jenks']                
+                self.tr('Classification method (for stratified sampling)'),
+                ['Quantiles', 'Equal intervals','K-means']              
             )
         )
         
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_N_CLASS, 
-                self.tr('Nombre de classes souhaité'),
+                self.tr('Number of classes'),
                 QgsProcessingParameterNumber.Integer,
                 4,
                 False,
@@ -106,7 +106,7 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_ECHANTILLON, 
-                self.tr("Taille de l'échantillon"),
+                self.tr("Number of samples"),
                 QgsProcessingParameterNumber.Integer,
                 10,
                 False,
@@ -118,7 +118,7 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr('Couche raster classee')
+                self.tr('Sampling points')
             )
         )
         
@@ -158,12 +158,6 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
             }
             extraction_selection = processing.run('native:saveselectedfeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
-            
-            
-            
-            
-            
-
         else :
         
             alg_params = {
@@ -172,7 +166,7 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
                 'INPUT_N_CLASS': parameters[self.INPUT_N_CLASS],
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
             }
-            layer_classee = processing.run('Agriculture de précision:Classification raster', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+            layer_classee = processing.run('Precision Agriculture:R - Classification', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
 
             # Pixels de raster en points
@@ -233,7 +227,7 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Echantillonnage sur un raster"
+        return "R - Sampling over a raster"
 
     def displayName(self):
         """
@@ -247,7 +241,7 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Raster')
+        return self.tr('Spatial Analysis')
 
     def groupId(self):
         """
@@ -257,7 +251,7 @@ class EchantillonnageRaster(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_raster'
+        return 'spatial_analysis'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

@@ -63,7 +63,7 @@ class RecroisementZones(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_1,
-                self.tr('Couche vecteur zone 1'),
+                self.tr('First zoning'),
                 [QgsProcessing.TypeVectorPolygon]
             )
         )
@@ -71,7 +71,7 @@ class RecroisementZones(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_2,
-                self.tr('Couche vecteur zone 2'),
+                self.tr('Second zoning'),
                 [QgsProcessing.TypeVectorPolygon]
             )
         )
@@ -79,7 +79,7 @@ class RecroisementZones(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr('Recroisement')
+                self.tr('Merged zoning')
             )
         )
         
@@ -133,7 +133,7 @@ class RecroisementZones(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Recroisement zones"
+        return "V - Merging two zonings"
 
     def displayName(self):
         """
@@ -147,11 +147,14 @@ class RecroisementZones(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Data Manipulation')
     
     def shortHelpString(self):
         short_help = self.tr(
-            ''
+            'Allows to merge two zonings of the same field into one single zoning.'
+            'The final zoning can be considered as a microzoning that combines the'
+            'zones of both initial zonings.'
+
         )
         return short_help
 
@@ -163,7 +166,7 @@ class RecroisementZones(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'data_manipulation'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

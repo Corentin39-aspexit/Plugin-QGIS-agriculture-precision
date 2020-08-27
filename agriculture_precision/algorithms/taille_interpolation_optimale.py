@@ -82,7 +82,7 @@ class TailleInterpolation(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_POINT,
-                self.tr('Vecteur points'),
+                self.tr('Point layer'),
                 [QgsProcessing.TypeVectorPoint]
             )
         )
@@ -90,7 +90,7 @@ class TailleInterpolation(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_CONTOUR,
-                self.tr('Contour de la parcelle'),
+                self.tr('Field contour'),
                 [QgsProcessing.TypeVectorPolygon]
             )
         )
@@ -98,15 +98,15 @@ class TailleInterpolation(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_MODEL,
-                self.tr('Modèle'),
-                ['Sphérique','Exponentiel']
+                self.tr('Variogram model'),
+                ['Spherical','Exponential']
             )
         )
          
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_NUGGET, 
-                self.tr('Pépite'),
+                self.tr('Nugget effect'),
                 QgsProcessingParameterNumber.Double
             )
         ) 
@@ -122,7 +122,7 @@ class TailleInterpolation(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_RANGE, 
-                self.tr('Portée'),
+                self.tr('Range'),
                 QgsProcessingParameterNumber.Double
             )
         ) 
@@ -130,7 +130,7 @@ class TailleInterpolation(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.OUTPUT,
-                self.tr('Fichier contenant la taille'),
+                self.tr('File'),
                 '.csv',
             )
         )
@@ -189,7 +189,7 @@ class TailleInterpolation(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Taille d'interpolation optimale"
+        return "V - Optimal grid size for interpolation"
 
     def displayName(self):
         """
@@ -203,11 +203,16 @@ class TailleInterpolation(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Data Manipulation')
 
     def shortHelpString(self):
         short_help = self.tr(
-            ' '
+            'Defines the optimal size of an interpolation grid for'
+            'a given field (column) of a vector layer. The user must'
+            'fill in the components of the theoretical variogram '
+            'related to the chosen field [from Tisseyre et al. (2018) '
+            'How to define the optimal grid size to map high resolution'
+            'spatial data? Precision Agriculture]'
         ) 
         return short_help
 
@@ -220,7 +225,7 @@ class TailleInterpolation(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'data_manipulation'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

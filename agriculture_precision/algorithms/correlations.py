@@ -69,14 +69,14 @@ class Correlation(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur')
+                self.tr('Vector layer')
             )
         )
         
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Méthode de correlation'),
+                self.tr('Correlation index'),
                 self.method_names
             )
         )
@@ -84,7 +84,7 @@ class Correlation(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFolderDestination(
                 self.OUTPUT,
-                self.tr('Graphique'),
+                self.tr('Correlation plot'),
             )
         )
         
@@ -138,7 +138,7 @@ class Correlation(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Calcul du coefficient de correlation'
+        return 'V - Correlation coefficient'
 
     def displayName(self):
         """
@@ -152,15 +152,12 @@ class Correlation(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Data Processing')
     
     def shortHelpString(self):
         short_help = self.tr(
-            'Permet de calculer un indice de corrélation entre deux champs (colonne) d’une couche vecteur. '
-            'Plusieurs indices sont disponibles :'
-            ' Corrélation de Pearson, '
-            'Corrélation de Spearman, '
-            'Corrélation de Kendall.'
+            'Allows to calculate a correlation index across numerical '
+            'columns of the input vector layer. A correlation plot is produced.'
         )
         return short_help
         
@@ -172,7 +169,7 @@ class Correlation(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'data_processing'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

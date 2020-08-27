@@ -80,14 +80,14 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur à filtrer')
+                self.tr('Layer to filter')
             )
         )
         
         self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD, 
-                self.tr( "Selection du champ à filtrer" ), 
+                self.tr( "Field selection" ), 
                 QVariant(),
                 self.INPUT,
                 type=QgsProcessingParameterField.Numeric
@@ -97,8 +97,8 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Méthode filtre à appliquer'),
-                ['Règle des 3 sigmas','Règle de Tukey','valeur fixe']
+                self.tr('Filtering method'),
+                ['Normal distribution','Tukey’s rule','fix threshold']
             )
         )
         
@@ -106,15 +106,15 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_FIX_VAL,
-                self.tr('Intervalle de filtrage (valeur fixe)'),
-                ['Borne inférieure','Borne supérieure','Intervalle (borne inférieure et supérieure']
+                self.tr('Filtering range (for fix threshold method)'),
+                ['Lower threshold','Higher threshold','Range (Lower and Higher Thresholds)']
             )
         )
         
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_UP_BOUND,
-                self.tr('Borne superieure'),
+                self.tr('Higher threshold'),
                 QgsProcessingParameterNumber.Double,
                 5
             )
@@ -123,7 +123,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_LOW_BOUND,
-                self.tr('Borne inferieure'),
+                self.tr('Lower threshold'),
                 QgsProcessingParameterNumber.Double,
                 0.5
             )
@@ -132,7 +132,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_CONFIANCE,
-                self.tr('Intervalle de confiance (3 sigmas)'),
+                self.tr('Confidence interval (for normal distribution method)'),
                 ['68%','95%', '99,5%']
             )
         )
@@ -140,14 +140,14 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.BOOLEAN,
-                self.tr('Supprimer les données aberrantes')
+                self.tr('Remove outliers')
             )
         )
        
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                self.tr('Couche filtrée')
+                self.tr('Filtered layer')
             )
         )
         
@@ -244,7 +244,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Filtrage des donnees aberrantes sur un vecteur'
+        return 'V - Non Spatial univariate filtering'
 
     def displayName(self):
         """
@@ -258,17 +258,18 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Data Processing')
 
     def shortHelpString(self):
         short_help = self.tr(
-            'Permet de détecter les données aberrantes (outliers) pour un champ donné (une colonne) d’une '
-            'couche vecteur à l’aide de plusieurs méthodes de filtrage. Les données aberrantes peuvent être '
-            'soit supprimées, soit identifiées dans une nouvelle colonne dans la couche vecteur. '
-            ' 3 sigmas : Sous l’hypothèse d’une distribution normale des données, la fonction identifie '
-            'les données dans les intervalles (moyenne +/- 1 écart type ; moyenne +/- 2 écarts type ; '
-            'moyenne +/- 3 écarts type ; '
-            ' Interquartile : aussi connue sous le nom de la règle de Tukey. '
+            'Detects global outliers for a given field (column) of a vector '
+            'layer using several filtering methods. Outliers can either be '
+            'removed or identified in a new column in the vector layer.\n \n'
+            ' - Normal distribution: Assuming a normal distribution of the'
+            'data, the function identifies data within the ranges (mean +/- '
+            '1 standard deviation; mean +/- 2 standard deviations; mean +/- '
+            '3 standard deviations; and beyond). \n'
+            '- Interquartile: also known as the Tukey’s rule' 
         ) 
         return short_help
 
@@ -281,7 +282,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'data_processing'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

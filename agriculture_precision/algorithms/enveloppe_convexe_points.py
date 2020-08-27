@@ -62,7 +62,7 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur à traiter'),
+                self.tr('Point layer'),
                 [QgsProcessing.TypeVectorPoint]
             )
         )
@@ -70,11 +70,9 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr('Enveloppe')
+                self.tr('Convex Hull')
             )
         )
-        
-        
 
     def processAlgorithm(self, parameters, context, feedback):
         """
@@ -110,7 +108,7 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Réaliser une enveloppe convexe à partir de points"
+        return "V - Convex Hull creation"
 
     def displayName(self):
         """
@@ -124,7 +122,13 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Data Manipulation')
+    
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Allows to build a convex envelope (contour) around a point vector layer.'
+        )
+        return short_help
 
     def groupId(self):
         """
@@ -134,7 +138,7 @@ class EnveloppeConvexePoints(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'data_manipulation'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

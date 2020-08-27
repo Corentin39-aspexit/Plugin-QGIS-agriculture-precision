@@ -83,14 +83,14 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur à filtrer')
+                self.tr('Layer to filter')
             )
         )
         
         self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD, 
-                self.tr( "Selection du champ à filtrer" ), 
+                self.tr( "Field selection" ), 
                 QVariant(),
                 self.INPUT,
                 type=QgsProcessingParameterField.Numeric
@@ -100,15 +100,15 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Méthode filtre à appliquer'),
-                ['Règle des 3 sigmas','Coefficient de Variation','IDW']
+                self.tr('Filtering method'),
+                ['Normal distribution','Coefficient of Variation','IDW']
             )
         )
         
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_CONFIANCE,
-                self.tr('Intervalle de confiance (3 sigmas)'),
+                self.tr('Confidence interval (for normal distribution method)'),
                 ['68%','95%', '99,5%']
             )
         )
@@ -116,7 +116,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_SD, 
-                self.tr('Nombre deviance standard (IDW)'),
+                self.tr('Number of standard deviations (IDW)'),
                 QgsProcessingParameterNumber.Integer,
                 2
             )
@@ -125,7 +125,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_VOISINS, 
-                self.tr('Nombre de voisins'),
+                self.tr('Number of neighbours'),
                 QgsProcessingParameterNumber.Integer,
                 5
             )
@@ -134,7 +134,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_CV_MAX, 
-                self.tr('Coefficient de variation maximum (Coefficient de variation)'),
+                self.tr('Maximum Coefficient of variation (for coefficient of variation method)'),
                 QgsProcessingParameterNumber.Double,
                 2
             )
@@ -142,14 +142,14 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.BOOLEAN_DISTANCE,
-                self.tr('Considérer le voisinage dans une distance donnée')
+                self.tr('Consider a distance-based neighbourhood')
             )
         )
         
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_DISTANCE, 
-                self.tr('Distance'),
+                self.tr('Neighbourhood distance'),
                 QgsProcessingParameterNumber.Double,
                 5e-5
             )
@@ -158,14 +158,14 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.BOOLEAN,
-                self.tr('Supprimer les données aberrantes')
+                self.tr('Remove outliers')
             )
         )
        
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                self.tr('Couche filtrée')
+                self.tr('Filtered layer')
             )
         )
         
@@ -340,7 +340,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Filtrage spatial des donnees'
+        return 'V - Spatial univariate filtering'
 
     def displayName(self):
         """
@@ -354,11 +354,23 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Data Processing')
 
     def shortHelpString(self):
         short_help = self.tr(
-            ' '
+            'Detects local/spatial outliers for a given field (column) of a vector'
+            ' layer using several filtering methods. Outliers can either be removed'
+            ' or identified in a new column in the vector layer. \n \n'
+            'Points are compared to their spatial neighbours\n \n'
+            '- Normal distribution: Assuming a normal distribution of the data,'
+            ' the function identifies data within the ranges (mean +/- 1 standard'
+            'deviation; mean +/- 2 standard deviations; mean +/- 3 standard deviations;'
+            'and beyond) in the neighbourhood \n'
+            '- Coefficient of variation : from Spekken et al. (2013). '
+            'A simple method for filtering spatial data. ECPA Congress]'
+            'IDW : Point value (Zi) is compared to interpolated value from '
+            'neighbours (Zj). If Zi is beyond the range of Zj +/- n standard '
+            'deviations of neighbourood values, the point is considered an outlier.'
         ) 
         return short_help
 
@@ -371,7 +383,7 @@ class FiltreDonneesSpatiales(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'data_processing'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

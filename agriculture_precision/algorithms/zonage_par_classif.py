@@ -86,14 +86,14 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT_CONTOUR,
-                self.tr('Contour de la parcelle')
+                self.tr('Field contour')
             )
         )
         
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT,
-                self.tr('Raster à zoner')
+                self.tr('Raster to zone')
             )
         )
        
@@ -101,15 +101,15 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Choix de la méthode de classification'),
-                ['Quantiles', 'Intervalles Egaux', 'K-means (Iterative Minimum Distance)']                
+                self.tr('Classification method'),
+                ['Quantiles', ' Equal-intervals', 'K-means']                
             )
         )
        
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_N_CLASS, 
-                self.tr('Nombre de classes'),
+                self.tr('Number of classes'),
                 QgsProcessingParameterNumber.Integer,
                 4,
                 False,
@@ -121,7 +121,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_RNEIGHBORS_SIZE, 
-                self.tr('Taille r.neighbors'),
+                self.tr('Size of modal filter'),
                 QgsProcessingParameterNumber.Double,
                 3
             )
@@ -130,7 +130,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_MIN_AREA, 
-                self.tr('Surface minimale de zone'),
+                self.tr('Minimum areas of zones'),
                 QgsProcessingParameterNumber.Double,
                 250
             )
@@ -139,7 +139,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD_GENERALIZE,
-                self.tr('Méthode pour v.generalize'),
+                self.tr('Smoothing method'),
                 ['Douglas', 'Douglas Reduction', 'Snakes'] #0,1,10             
             )
         )
@@ -147,7 +147,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_ALPHA, 
-                self.tr('alpha'),
+                self.tr('alpha (for Snakes method)'),
                 QgsProcessingParameterNumber.Double,
                 1
             )
@@ -156,7 +156,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_BETA, 
-                self.tr('beta'),
+                self.tr('beta (for Snakes method)'),
                 QgsProcessingParameterNumber.Double,
                 1
             )
@@ -183,7 +183,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_REDUCTION, 
-                self.tr('Reduction'),
+                self.tr('Reduction (for Douglas reduction method)'),
                 QgsProcessingParameterNumber.Double,
                 50
             )
@@ -192,7 +192,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr('Parcelle zonee')
+                self.tr('Within-field zones')
             )
         )
         
@@ -258,7 +258,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'INPUT_N_CLASS': nombre_classes,
             'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
-        classe = processing.run('Agriculture de précision:Classification raster', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        classe = processing.run('Precision Agriculture:R - Classification', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
         
         # r.neighbors
@@ -401,7 +401,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Zonage par classification"
+        return "R - Classification-based zoning"
 
     def displayName(self):
         """
@@ -415,7 +415,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Raster')
+        return self.tr('Classification - Zoning')
 
     def groupId(self):
         """
@@ -425,7 +425,32 @@ class ZonageClassification(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_raster'
+        return 'classification_zoning'
+        
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Allows to delimit within-field zones on a raster. The raster '
+            'is first reclassified using a user-defined number of classes '
+            'and classification method. The classified raster is then post-'
+            'processed to build zones with the following steps: \n\n'
+            ' - Modal smoothing of the classes to limit the initial data '
+            'noise [call GRASS r.neigbours function].\n'
+            ' - Vectorization of the raster to construct the zones [call '
+            'QGIS polygonize function]\n'
+            'Deletion of surface areas below a given threshold [call GRASS '
+            'v.clean function].\n'
+            ' - Calculation of statistics in each of the delimited zones '
+            '(mean and standard deviation of the raster in each zone) '
+            '[call QGIS Zone Statistics function].\n'
+            ' - Smoothing of the contour of the zones to improve the '
+            'rendering [calling GRASS v.generalize function] \n\n'
+            'Each of these steps can be set by the user. This method '
+            'is considered more like a spatialized classification method '
+            'than a zoning method because it is based primarily on a '
+            'classification method whose outputs are post-processed by '
+            'spatial filters.'
+        )
+        return short_help
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

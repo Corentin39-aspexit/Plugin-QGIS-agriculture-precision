@@ -69,7 +69,7 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Couche vecteur à traiter'),
+                self.tr('Point layer'),
                 [QgsProcessing.TypeVectorPoint]
             )
         )
@@ -77,15 +77,15 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Methode'),
-                ['Thiessen','Voronoi','Delaunay','Pondération inverse à la distance']
+                self.tr('Interpolation method'),
+                ['Thiessen','Voronoi','Delaunay','Inverse distance weighting']
             )
         )
         
         self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD, 
-                self.tr( "Champ à rasteriser" ), 
+                self.tr( "Field to interpolate" ), 
                 QVariant(),
                 self.INPUT,
                 type=QgsProcessingParameterField.Numeric
@@ -95,7 +95,7 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_PIXEL,
-                self.tr('Taille du pixel'),
+                self.tr('Grid resolution (in meters)'),
                 QgsProcessingParameterNumber.Double,
                 0.5
             )
@@ -104,7 +104,7 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_POWER,
-                self.tr('Puissance (Pondération inverse à la distance)'),
+                self.tr('IDW power (for IDW method)'),
                 QgsProcessingParameterNumber.Integer,
                 2
             )
@@ -113,7 +113,7 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-                self.tr('Interpolation')
+                self.tr('Interpolated raster')
             )
         )
         
@@ -236,7 +236,7 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Interpolation à partir de points"
+        return "V - Interpolation"
 
     def displayName(self):
         """
@@ -250,7 +250,7 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Spatial Analysis')
 
     def groupId(self):
         """
@@ -260,7 +260,19 @@ class InterpolationPoints(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'spatial_analysis'
+
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Generates the interpolation of a user-defined numeric field '
+            '(column) of a vector layer. A raster is generated. The user '
+            'can choose the size of the interpolation grid and the '
+            'interpolation method. For tesselation methods, a tesselation '
+            'is first built (each polygon takes the value of the point it '
+            'contains) and the grid of interpolation is then superimposed '
+            'on the tesselation. '
+        )
+        return short_help
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

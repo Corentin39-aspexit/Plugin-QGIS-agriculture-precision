@@ -65,14 +65,14 @@ class XmlToShp(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFile(
                 self.INPUT,
-                self.tr('fichier XML à traiter')
+                self.tr('XML file')
             )
         )
         
         self.addParameter(
             QgsProcessingParameterFolderDestination(
                 self.OUTPUT,
-                self.tr('Dossier où enregistrer les shapefiles')
+                self.tr('Folder to which shapefile will be created')
             )
         )
         
@@ -770,7 +770,7 @@ class XmlToShp(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Convertir xml vers shp"
+        return "O - Convert Telepac XML files to Shapefile"
 
     def displayName(self):
         """
@@ -784,11 +784,11 @@ class XmlToShp(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Autre')
+        return self.tr('Data Gathering')
     
     def shortHelpString(self):
         short_help = self.tr(
-            'Permet de convertir un fichier xml en plusieurs fichiers shapefiles'
+            'Convert TelePAC files from XML format to SHP format'
         )
         return short_help
 
@@ -800,7 +800,7 @@ class XmlToShp(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'autre'
+        return 'data_gathering'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

@@ -73,7 +73,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUT,
-                self.tr('Couche raster a traiter')
+                self.tr('Raster to classify')
             )
         )
 
@@ -81,15 +81,15 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.INPUT_METHOD,
-                self.tr('Choix de la méthode de classification'),
-                ['Quantiles', 'Intervalles Egaux', 'K-means (Iterative Minimum Distance)']                
+                self.tr('Classification method'),
+                ['Quantiles', 'Equal-intervals', 'K-means']                
             )
         )
        
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.INPUT_N_CLASS, 
-                self.tr('Nombre de classes'),
+                self.tr('Number of classes'),
                 QgsProcessingParameterNumber.Integer,
                 4,
                 False,
@@ -101,7 +101,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 self.OUTPUT,
-                self.tr('Classes')
+                self.tr('Classified raster')
             )
         )
         
@@ -217,7 +217,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return "Classification raster"
+        return "R - Classification"
 
     def displayName(self):
         """
@@ -231,12 +231,12 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Raster')
+        return self.tr('Classification - Zoning')
         
     def shortHelpString(self):
         short_help = self.tr(
-            'Permet de reclassifier un raster en un nombre de classes défini par l’utilisateur à l’aide de '
-            'plusieurs méthodes de classification : Intervalles égaux, Quantiles, K-means'
+            'Allows to reclassify a raster into a user-defined number of classes'
+            'using several classification methods'
         )
         return short_help
 
@@ -248,7 +248,7 @@ class ClassifyRaster(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_raster'
+        return 'classification_zoning'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)

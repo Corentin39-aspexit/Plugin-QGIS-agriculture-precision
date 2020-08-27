@@ -80,7 +80,7 @@ class DonneesPaysage(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Vecteur zones'),
+                self.tr('Zones layer'),
                 [QgsProcessing.TypeVectorPolygon]
             )
         )
@@ -88,7 +88,7 @@ class DonneesPaysage(QgsProcessingAlgorithm):
         self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD_ID,
-                self.tr( "Champ identifiant des zones" ), 
+                self.tr( "Zones class" ), 
                 QVariant(),
                 self.INPUT
             ) 
@@ -98,7 +98,7 @@ class DonneesPaysage(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFileDestination(
                 self.OUTPUT,
-                self.tr('Fichier contenant les donnees'),
+                self.tr('File'),
                 '.csv',
             )
         )
@@ -189,7 +189,7 @@ class DonneesPaysage(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Donnees ecologie paysage'
+        return 'V - Zoning summary'
 
     def displayName(self):
         """
@@ -203,11 +203,14 @@ class DonneesPaysage(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Action sur Vecteurs')
+        return self.tr('Classification - Zoning')
 
     def shortHelpString(self):
         short_help = self.tr(
-            ''
+            'Allow to compute several zoning descriptors (mean perimeter'
+            'of the zones, total perimeters of the zones, density of zones..). \n\n'
+            'The variable selected in the function must be the class of each zone'
+            '(the data originating the zones must have been classified before).'
         ) 
         return short_help
 
@@ -220,7 +223,7 @@ class DonneesPaysage(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'action_sur_vecteur'
+        return 'classification_zoning'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
