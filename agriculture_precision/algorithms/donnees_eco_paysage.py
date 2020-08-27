@@ -196,7 +196,7 @@ class DonneesPaysage(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'V - Landscape Matrix'
+        return 'V - Landscape Metrics'
 
     def displayName(self):
         """
