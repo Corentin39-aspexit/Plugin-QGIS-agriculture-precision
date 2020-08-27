@@ -216,13 +216,20 @@ class IndiceZonage(QgsProcessingAlgorithm):
             else :
                 RV.append(NULL)
             
+        zones = df[zone_id].unique().tolist()
+        nb_zones = len(zones)
+        df_mean = df.drop(columns = zone_id).mean()
+        mean=df_mean.tolist()
+        sd = df.drop(columns = zone_id).std()
+        df_CV = 100*(sd/df_mean)
+        CV = df_CV.tolist()
         
         #création du fichier csv qui va contenir les données de RV
         with open(csv, 'w') as output_file:
           # write header
-          line = ','.join(name for name in field_list if name != zone_id) + '\n'
+          line = ','.join('RV_' + name for name in field_list if name != zone_id) +','+ ','.join( 'mean_' + name for name in field_list if name != zone_id) + ',number_of_zones,' + ','.join('CV_' + name for name in field_list if name != zone_id) + '\n'
           output_file.write(line)
-          line = ','.join(str(rv) for rv in RV) + '\n'
+          line = ','.join(str(rv) for rv in RV) +',' + ','.join(str(m) for m in mean) + ',' + str(nb_zones) + ',' + ','.join(str(cv) for cv in CV) +'\n'
           output_file.write(line)
          
         

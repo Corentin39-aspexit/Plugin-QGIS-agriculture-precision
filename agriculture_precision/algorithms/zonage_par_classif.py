@@ -67,6 +67,14 @@ class ZonageClassification(QgsProcessingAlgorithm):
     INPUT_METHOD = 'INPUT_METHOD'
     INPUT_N_CLASS = 'INPUT_N_CLASS'
     TEMP_PATH = 'TEMP_PATH'
+    INPUT_RNEIGHBORS_SIZE = 'INPUT_RNEIGHBORS_SIZE'
+    INPUT_MIN_AREA = 'INPUT_MIN_AREA'
+    INPUT_METHOD_GENERALIZE = 'INPUT_METHOD_GENERALIZE'
+    INPUT_ALPHA = 'INPUT_ALPHA'
+    INPUT_BETA ='INPUT_BETA'
+    INPUT_MAX_TOLERANCE ='INPUT_MAX_TOLERANCE'
+    INPUT_LOOK_AHEAD = 'INPUT_LOOK_AHEAD'
+    INPUT_REDUCTION = 'INPUT_REDUCTION'
 
 
     def initAlgorithm(self, config):
@@ -111,6 +119,77 @@ class ZonageClassification(QgsProcessingAlgorithm):
         )
         
         self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_RNEIGHBORS_SIZE, 
+                self.tr('Taille r.neighbors'),
+                QgsProcessingParameterNumber.Double,
+                3
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_MIN_AREA, 
+                self.tr('Surface minimale de zone'),
+                QgsProcessingParameterNumber.Double,
+                250
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_METHOD_GENERALIZE,
+                self.tr('Méthode pour v.generalize'),
+                ['Douglas', 'Douglas Reduction', 'Snakes'] #0,1,10             
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_ALPHA, 
+                self.tr('alpha'),
+                QgsProcessingParameterNumber.Double,
+                1
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_BETA, 
+                self.tr('beta'),
+                QgsProcessingParameterNumber.Double,
+                1
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_MAX_TOLERANCE, 
+                self.tr('Maximum tolerance value'),
+                QgsProcessingParameterNumber.Double,
+                1
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_LOOK_AHEAD, 
+                self.tr('Look ahead parameter'),
+                QgsProcessingParameterNumber.Double,
+                7
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_REDUCTION, 
+                self.tr('Reduction'),
+                QgsProcessingParameterNumber.Double,
+                50
+            )
+        )
+        
+        self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
                 self.tr('Parcelle zonee')
@@ -132,6 +211,9 @@ class ZonageClassification(QgsProcessingAlgorithm):
         #tempfolder2 = 'C:/Users/Utilisateur/Documents/ASPEXIT/plugin_agriculture_precision/data_test/Temporaires'
         nombre_classes = self.parameterAsInt(parameters,self.INPUT_N_CLASS,context)
         method = self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
+        method_generalize = self.parameterAsEnum(parameters,self.INPUT_METHOD_GENERALIZE,context)
+        if method_generalize == 2 :
+            method_generalize+=8
         
         # Tampon
         alg_params = {
@@ -192,7 +274,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'method': 2,
             'quantile': '',
             'selection': classe['OUTPUT'],
-            'size': 3,
+            'size': parameters['INPUT_RNEIGHBORS_SIZE'],
             'weight': '',
             'output': tempfolder+'temporary.tif'
         }
@@ -249,7 +331,7 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'GRASS_VECTOR_EXPORT_NOCAT': False,
             'GRASS_VECTOR_LCO': '',
             'input': champ_suppr['OUTPUT'],
-            'threshold': '250',
+            'threshold': str(parameters['INPUT_MIN_AREA']),
             'tool': [10],
             'type': [0,1,2,3,4,5,6],
             'error': QgsProcessing.TEMPORARY_OUTPUT,
@@ -287,20 +369,20 @@ class ZonageClassification(QgsProcessingAlgorithm):
             'GRASS_VECTOR_DSCO': '',
             'GRASS_VECTOR_EXPORT_NOCAT': False,
             'GRASS_VECTOR_LCO': '',
-            'alpha': 1,
+            'alpha': parameters['INPUT_ALPHA'],
             'angle_thresh': 3,
-            'beta': 1,
+            'beta': parameters['INPUT_BETA'],
             'betweeness_thresh': 0,
             'cats': '',
             'closeness_thresh': 0,
             'degree_thresh': 0,
             'input': stat['INPUT_VECTOR'],
             'iterations': 1,
-            'look_ahead': 7,
-            'method': 0,
-            'reduction': 50,
+            'look_ahead': parameters['INPUT_LOOK_AHEAD'],
+            'method': method_generalize,
+            'reduction': parameters['INPUT_REDUCTION'],
             'slide': 0.5,
-            'threshold': 1,
+            'threshold': parameters['INPUT_MAX_TOLERANCE'],
             'type': [0,1,2],
             'where': '',
             'error': QgsProcessing.TEMPORARY_OUTPUT,
