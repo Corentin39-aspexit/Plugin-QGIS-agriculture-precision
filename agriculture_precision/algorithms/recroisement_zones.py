@@ -124,11 +124,21 @@ class RecroisementZones(QgsProcessingAlgorithm):
                         
         if feedback.isCanceled():
             return {}
+            
+          # De morceaux multiples à morceaux uniques
+        alg_params = {
+            'INPUT': layer_union['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        layer_uniques = processing.run('native:multiparttosingleparts', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
                 
+        if feedback.isCanceled():
+            return {}
+            
         # Ajouter les attributs de géométrie
         alg_params = {
             'CALC_METHOD': 0,
-            'INPUT': layer_union['OUTPUT'],
+            'INPUT': layer_uniques['OUTPUT'],
             'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
         }
         layer_geom = processing.run('qgis:exportaddgeometrycolumns', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
@@ -136,21 +146,11 @@ class RecroisementZones(QgsProcessingAlgorithm):
         if feedback.isCanceled():
             return {}
                 
-          # De morceaux multiples à morceaux uniques
-        alg_params = {
-            'INPUT': layer_geom['OUTPUT'],
-            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
-        }
-        layer_uniques = processing.run('native:multiparttosingleparts', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
-                
-        if feedback.isCanceled():
-            return {}
-                
         # Ajouter un champ auto-incrémenté
         alg_params = {
             'FIELD_NAME': 'ZONE_ID',
             'GROUP_FIELDS': None,
-            'INPUT': layer_uniques['OUTPUT'],
+            'INPUT': layer_geom['OUTPUT'],
             'SORT_ASCENDING': True,
             'SORT_EXPRESSION': '',
             'SORT_NULLS_FIRST': False,
