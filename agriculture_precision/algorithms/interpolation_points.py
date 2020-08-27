@@ -291,10 +291,10 @@ class InterpolationPoints(QgsProcessingAlgorithm):
             'Generates the interpolation of a user-defined numeric field '
             '(column) of a vector layer. A raster is generated. The user '
             'can choose the size of the interpolation grid and the '
-            'interpolation method. For tesselation methods, a tesselation '
+            'interpolation method. For tessellations methods, a tessellation '
             'is first built (each polygon takes the value of the point it '
             'contains) and the grid of interpolation is then superimposed '
-            'on the tesselation. '
+            'on the tessellation. '
             '\nprovided by ASPEXIT\n'
             'author : Lisa Rollier'   
         )
