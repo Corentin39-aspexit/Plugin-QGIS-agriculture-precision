@@ -43,8 +43,12 @@ from .algorithms.tesselations import Tesselations
 from .algorithms.xml_to_shp import XmlToShp
 from .algorithms.indice_zonage import IndiceZonage
 from .algorithms.filtrage_donnees_spatiales import FiltreDonneesSpatiales
-from .algorithms.grille_orientee import GrilleOrientee
 from .algorithms.taille_interpolation_optimale import TailleInterpolation
+from .algorithms.grille_orientee import GrilleOrientee
+from .algorithms.echantillonnage_vecteur_point import EchantillonageVecteurPoint
+from .algorithms.classification_vecteur_point import ClassificationVecteurPoint
+from .algorithms.recroisement_zones import RecroisementZones
+from .algorithms.donnees_eco_paysage import DonneesPaysage
 
 class AgriculturePrecisionProvider(QgsProcessingProvider):
 
@@ -78,8 +82,12 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         self.addAlgorithm(InterpolationPoints())
         self.addAlgorithm(IndiceZonage())
         self.addAlgorithm(FiltreDonneesSpatiales())
-        self.addAlgorithm(GrilleOrientee())
         self.addAlgorithm(TailleInterpolation())
+        self.addAlgorithm(GrilleOrientee())
+        self.addAlgorithm(EchantillonageVecteurPoint())
+        self.addAlgorithm(ClassificationVecteurPoint())
+        self.addAlgorithm(RecroisementZones())
+        self.addAlgorithm(DonneesPaysage())
         #Autre
         self.addAlgorithm(XmlToShp())
         
@@ -91,7 +99,7 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
         string should be a unique, short, character only string, eg "qgis" or
         "gdal". This string should not be localised.
         """
-        return 'Agriculture de précision'
+        return 'Precision Agriculture'
 
     def name(self):
         """
@@ -100,7 +108,7 @@ class AgriculturePrecisionProvider(QgsProcessingProvider):
 
         This string should be short (e.g. "Lastools") and localised.
         """
-        return self.tr('Agriculture de précision')
+        return self.tr('Precision Agriculture')
 
     def icon(self):
         """
