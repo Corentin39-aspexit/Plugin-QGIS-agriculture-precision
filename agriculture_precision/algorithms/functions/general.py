@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon July 21 2020
-@author: Lisa R
+@author: Lisa Rollier - ASPEXIT
 """
    
 def pixel_resolution(layer, pixel):
