@@ -118,11 +118,31 @@ class RecroisementZones(QgsProcessingAlgorithm):
         alg_params = {
             'CALC_METHOD': 0,
             'INPUT': layer_union['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        layer_geom = processing.run('qgis:exportaddgeometrycolumns', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+      
+          # De morceaux multiples à morceaux uniques
+        alg_params = {
+            'INPUT': layer_geom['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        layer_uniques = processing.run('native:multiparttosingleparts', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        # Ajouter un champ auto-incrémenté
+        alg_params = {
+            'FIELD_NAME': 'ZONE_ID',
+            'GROUP_FIELDS': None,
+            'INPUT': layer_uniques['OUTPUT'],
+            'SORT_ASCENDING': True,
+            'SORT_EXPRESSION': '',
+            'SORT_NULLS_FIRST': False,
+            'START': 1,
             'OUTPUT': parameters['OUTPUT']
         }
-        layer_output = processing.run('qgis:exportaddgeometrycolumns', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
-      
-             
+        layer_output = processing.run('native:addautoincrementalfield', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        
+         
         return{self.OUTPUT : layer_output} 
    
     def name(self):
