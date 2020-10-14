@@ -29,46 +29,42 @@ __copyright__ = '(C) 2020 by ASPEXIT'
 
 __revision__ = '$Format:%H$'
 
-#import QColor
+
 
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
                        QgsProcessingAlgorithm,
                        QgsApplication,
-                       QgsVectorLayer,
-                       QgsDataProvider,
-                       QgsVectorDataProvider,
-                       QgsField,
-                       QgsFeature,
-                       QgsGeometry,
-                       QgsPointXY,
+                       QgsRasterLayer,
+                       QgsProcessingParameterNumber,
                        QgsProcessingParameterVectorLayer,
                        QgsProcessingParameterFeatureSink,
-                       QgsProcessingParameterField,
                        QgsProcessingParameterEnum,
-                       QgsProcessingParameterBoolean,
-                       QgsProcessingParameterNumber)
+                       QgsProcessingParameterField,
+                       QgsField,
+                       QgsFeature,
+                       QgsPointXY,
+                       QgsGeometry,
+                       QgsProcessingUtils)
+
+from .functions.fonctions_repartition import *
 
 from qgis import processing 
-
 import numpy as np
 import pandas as pd
 
-class FiltreDonnees(QgsProcessingAlgorithm):
+class ClassificationVecteurPoint(QgsProcessingAlgorithm):
     """
     
     """
-
+    
     OUTPUT= 'OUTPUT'
     INPUT = 'INPUT'
+    INPUT_METHOD_CLASS = 'INPUT_METHOD_CLASS'
+    INPUT_N_CLASS='INPUT_N_CLASS'
+    INPUT_ECHANTILLON = 'INPUT_ECHANTILLON'
     FIELD = 'FIELD'
-    INPUT_METHOD = 'INPUT_METHOD'
-    INPUT_CONFIANCE = 'INPUT_CONFIANCE'
-    BOOLEAN = 'BOOLEAN'
-    INPUT_FIX_VAL = 'INPUT_FIX_VAL'
-    INPUT_UP_BOUND = 'INPUT_UP_BOUND'
-    INPUT_LOW_BOUND = 'INPUT_LOW_BOUND'
 
     def initAlgorithm(self, config):
         """
@@ -79,74 +75,47 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.INPUT,
-                self.tr('Layer to filter')
+                self.tr('Vector to classify'),
+                [QgsProcessing.TypeVectorPoint]
+            )
+        )
+
+        
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.INPUT_METHOD_CLASS,
+                self.tr('Classification method'),
+                ['Quantiles', 'Equal-intervals']                
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.INPUT_N_CLASS, 
+                self.tr('Number of classes'),
+                QgsProcessingParameterNumber.Integer,
+                4,
+                False,
+                2,
+                10
             )
         )
         
         self.addParameter( 
             QgsProcessingParameterField( 
                 self.FIELD, 
-                self.tr( "Field selection" ), 
+                self.tr( "Field to classify" ), 
                 QVariant(),
                 self.INPUT,
                 type=QgsProcessingParameterField.Numeric
             ) 
         )
+    
         
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.INPUT_METHOD,
-                self.tr('Filtering method'),
-                ['Normal distribution','Tukey’s rule','fix threshold']
-            )
-        )
-        
-        
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.INPUT_FIX_VAL,
-                self.tr('Filtering range (for fix threshold method)'),
-                ['Lower threshold','Higher threshold','Range (Lower and Higher Thresholds)']
-            )
-        )
-        
-        self.addParameter(
-            QgsProcessingParameterNumber(
-                self.INPUT_UP_BOUND,
-                self.tr('Higher threshold'),
-                QgsProcessingParameterNumber.Double,
-                5
-            )
-        )
-        
-        self.addParameter(
-            QgsProcessingParameterNumber(
-                self.INPUT_LOW_BOUND,
-                self.tr('Lower threshold'),
-                QgsProcessingParameterNumber.Double,
-                0.5
-            )
-        )        
-        
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.INPUT_CONFIANCE,
-                self.tr('Confidence interval (for normal distribution method)'),
-                ['68%','95%', '99,5%']
-            )
-        )
-       
-        self.addParameter(
-            QgsProcessingParameterBoolean(
-                self.BOOLEAN,
-                self.tr('Remove outliers')
-            )
-        )
-       
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                self.tr('Filtered layer')
+                self.tr('Classified vector')
             )
         )
         
@@ -159,23 +128,18 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         
         layer=self.parameterAsVectorLayer(parameters,self.INPUT,context) 
         
-        #on ajoute un nouveau champ 'Aberrant' dans la couche en sortie 
         new_fields = layer.fields()
+        new_fields.append(QgsField('Classes', QVariant.Double))
         
-        if not parameters['BOOLEAN'] :
-            new_fields.append(QgsField('Aberrant', QVariant.Double))
         
-        (sink, dest_id) = self.parameterAsSink(parameters,self.OUTPUT,context, new_fields, layer.wkbType(), layer.sourceCrs())
-        method=self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
-        method_fix_val = self.parameterAsEnum(parameters,self.INPUT_FIX_VAL,context)
-        int_confiance=self.parameterAsEnum(parameters,self.INPUT_CONFIANCE,context)
-        field_to_filter = self.parameterAsString(parameters,self.FIELD, context) 
-        
+        (sink,fn) = self.parameterAsSink(parameters,self.OUTPUT,context, new_fields, layer.wkbType(), layer.sourceCrs())
+        method = self.parameterAsEnum(parameters,self.INPUT_METHOD_CLASS,context)
+                                   
         if feedback.isCanceled():
             return {}
-        
+                
 
-        
+              
         features = layer.getFeatures()
         
         #liste contenant les noms des champs
@@ -187,31 +151,19 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         #on créer le dataframe avec les données et les noms des colonnes
         df = pd.DataFrame(data, columns = field_list)
         
-        
-        if method == 0 :
-            int_confiance+=1
-            mean = df[field_to_filter].mean()
-            sd = df[field_to_filter].std()
-            #met 1 quand c'est aberrant, 0 sinon
-            df['Aberrant'] = np.where((df[field_to_filter] > mean - int_confiance*sd) & (df[field_to_filter] < mean + int_confiance*sd) , 0, 1)
-        
-        elif method == 1 :
-            quartiles = df[field_to_filter].quantile([0.25,0.75])
-            inter_quartiles = quartiles[0.75] - quartiles [0.25]
-            df['Aberrant'] = np.where((df[field_to_filter] > quartiles[0.25] - inter_quartiles*1.5) & (df[field_to_filter] < quartiles[0.75] + inter_quartiles*1.5), 0, 1)
-        
-        else :
-            if method_fix_val == 0 :
-                df['Aberrant'] = np.where(df[field_to_filter] >= parameters['INPUT_LOW_BOUND'] , 0, 1)
-            elif method_fix_val == 1 :
-                df['Aberrant'] = np.where(df[field_to_filter] <= parameters['INPUT_UP_BOUND'] , 0, 1)
-            else :
-                df['Aberrant'] = np.where((df[field_to_filter] >= parameters['INPUT_LOW_BOUND']) & (df[field_to_filter] <= parameters['INPUT_UP_BOUND']) , 0, 1)
-        
+        array = df[parameters['FIELD']].values
+        out_array = array[:]
+                                           
         if feedback.isCanceled():
             return {}
-        
+                
 
+        if method == 0 :
+           out_array = rep_quantiles(parameters['INPUT_N_CLASS'],array,out_array)
+        else :
+           out_array = intervalles_egaux(parameters['INPUT_N_CLASS'],array,out_array)
+           
+        df['Classes']=out_array
         #on va créer un dataframe avec les coordonnées, normalement les features sont parcourrues dans le même ordre
         features = layer.getFeatures()
         coordinates_arr = np.array([[feat.geometry().asPoint()[k] for k in range(2)] for feat in features])
@@ -219,47 +171,32 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         df['X']=coordinates['X']
         df['Y']=coordinates['Y']    
         
-        if feedback.isCanceled():
-            return {}
-        
-
-        if parameters['BOOLEAN'] :
-            indexNames = df[df['Aberrant'] == 1 ].index
-            df.drop(indexNames , inplace=True)
-            df.drop(columns = 'Aberrant')
-        
         #on transforme le dataframe en liste pour les attributs
         df_list=df.values.tolist()
-                
-        
-        if feedback.isCanceled():
-            return {}
-        
         
         featureList=[]
-        
+                                           
+        if feedback.isCanceled():
+            return {}
+                
+
         #on va parcourrir chaque ligne, ie chaque feature
         for row in df_list:
             feat = QgsFeature()
             feat.setAttributes(row[0:-2]) #row = une ligne, on exclu les deux dernières colonnes qui sont les coordonnées
             feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(row[-2],row[-1]))) #on définit la position de chaque point 
             featureList.append(feat) #on ajoute la feature à la liste
-            
-            if feedback.isCanceled():
-                return {}
-        
-
 
         #on ajoute la liste des features à la couche de sortie
         sink.addFeatures(featureList)
-        
+                                           
         if feedback.isCanceled():
             return {}
-        
+                
 
-        
-        return{self.OUTPUT : dest_id} 
+        return{self.OUTPUT : fn} 
 
+   
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -268,7 +205,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'V - Non Spatial univariate filtering'
+        return "V - Classification"
 
     def displayName(self):
         """
@@ -282,23 +219,7 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Filtering')
-
-    def shortHelpString(self):
-        short_help = self.tr(
-            'Detects global outliers for a given field (column) of a vector '
-            'layer using several filtering methods. Outliers can either be '
-            'removed or identified in a new column in the vector layer.\n \n'
-            ' - Normal distribution: Assuming a normal distribution of the'
-            'data, the function identifies data within the ranges (mean +/- '
-            '1 standard deviation; mean +/- 2 standard deviations; mean +/- '
-            '3 standard deviations; and beyond). \n'
-            '- Interquartile: also known as the Tukey’s rule'
-            '\nprovided by ASPEXIT\n'
-            'author : Lisa Rollier'            
-        ) 
-        return short_help
-
+        return self.tr('Classification')
 
     def groupId(self):
         """
@@ -308,10 +229,20 @@ class FiltreDonnees(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'filtering'
+        return 'classification'
+    
+    def shortHelpString(self):
+        short_help = self.tr(
+            'Allows to reclassify a vector with point geometry into a user-'
+            'defined number of classes using several classification methods'
+            '\n provided by ASPEXIT\n'
+            'author : Lisa Rollier'
+        )
+        return short_help
+
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return FiltreDonnees()
+        return ClassificationVecteurPoint()

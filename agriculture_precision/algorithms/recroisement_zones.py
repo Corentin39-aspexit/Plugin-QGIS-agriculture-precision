@@ -30,34 +30,28 @@ __copyright__ = '(C) 2020 by ASPEXIT'
 __revision__ = '$Format:%H$'
 
 
-
-from qgis.PyQt.QtCore import QCoreApplication#, QVariant
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
                        QgsProcessingAlgorithm,
                        QgsApplication,
                        QgsVectorLayer,
                        QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterFolderDestination,
-                       QgsProcessingParameterEnum)
+                       QgsProcessingParameterVectorDestination)
+
+
 
 from qgis import processing 
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
-class Correlation(QgsProcessingAlgorithm):
+class RecroisementZones(QgsProcessingAlgorithm):
     """
     
     """ 
 
     OUTPUT= 'OUTPUT'
-    INPUT = 'INPUT'
-    FIELD = 'FIELD'
-    INPUT_METHOD = 'INPUT_METHOD'
-    INPUT_CONFIANCE = 'INPUT_CONFIANCE'
-    method_names = ['pearson','kendall','spearman']
+    INPUT_1 = 'INPUT_1'
+    INPUT_2 = 'INPUT_2'
 
     def initAlgorithm(self, config):
         """
@@ -67,23 +61,24 @@ class Correlation(QgsProcessingAlgorithm):
         
         self.addParameter(
             QgsProcessingParameterVectorLayer(
-                self.INPUT,
-                self.tr('Vector layer')
+                self.INPUT_1,
+                self.tr('First zoning'),
+                [QgsProcessing.TypeVectorPolygon]
             )
         )
         
         self.addParameter(
-            QgsProcessingParameterEnum(
-                self.INPUT_METHOD,
-                self.tr('Correlation index'),
-                self.method_names
+            QgsProcessingParameterVectorLayer(
+                self.INPUT_2,
+                self.tr('Second zoning'),
+                [QgsProcessing.TypeVectorPolygon]
             )
         )
         
         self.addParameter(
-            QgsProcessingParameterFolderDestination(
+            QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr('Correlation plot'),
+                self.tr('Merged zoning')
             )
         )
         
@@ -93,54 +88,83 @@ class Correlation(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-        
-        layer=self.parameterAsVectorLayer(parameters,self.INPUT,context) 
-        fn = self.parameterAsFileOutput(parameters,self.OUTPUT,context)
-        method=self.parameterAsEnum(parameters,self.INPUT_METHOD,context)
-                                           
+                        
         if feedback.isCanceled():
             return {}
                 
-
-        features = layer.getFeatures()
-       
-        #liste contenant les noms des champs
-        field_list=[field.name() for field in layer.fields() if field.type() in [2,4,6]] #peut-être qu'il y a d'autres types numériques... difficile a trouver
-        
-        #on créé une matrice ou 1 ligne = 1 feature
-        data = np.array([[feat[field_name] for field_name in field_list] for feat in features])
+        # Réparer les géométries
+        alg_params = {
+            'INPUT': parameters['INPUT_1'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        layer_1 = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
                 
-        #on créer le dataframe avec les données et les noms des colonnes
-        df = pd.DataFrame(data, columns = field_list)
-        
-        #on créer la matrice des graphiques de corrélation
-        axes = pd.plotting.scatter_matrix(df,alpha=0.2)
-        
-        #on ajoute un titre au graphique
-        plt.suptitle(layer.name()+'_'+self.method_names[method])
-        
-        #on créer une matrice numpy avec les corrélations
-        corr = df.corr(self.method_names[method])
-        corr=corr.to_numpy()
-                                           
         if feedback.isCanceled():
             return {}
                 
-
-        # on ajoute les corrélations dans la partie supérieure de la matrice des graphiques de corrélation
-        for i, j in zip(* np.triu_indices_from(axes, k=1)):
-            axes[i, j].annotate("%.3f" %corr[i,j], (0.8, 0.8), xycoords='axes fraction', ha='center', va='center')
-        
-        #on sauvegarde dans l'adresse en sortie
-        plt.savefig(fn+'\\figure_correlation_' + self.method_names[method] + '_' + layer.name() +'.jpg')
-                                           
+        # Réparer les géométries
+        alg_params = {
+            'INPUT': parameters['INPUT_2'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        layer_2 = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+                
         if feedback.isCanceled():
             return {}
                 
-
-        return{self.OUTPUT : fn} 
-      
-
+        # Union
+        alg_params = {
+            'INPUT': layer_1['OUTPUT'],
+            'OVERLAY': layer_2['OUTPUT'],
+            'OVERLAY_FIELDS_PREFIX': '',
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        layer_union = processing.run('native:union', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        
+                        
+        if feedback.isCanceled():
+            return {}
+            
+          # De morceaux multiples à morceaux uniques
+        alg_params = {
+            'INPUT': layer_union['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        layer_uniques = processing.run('native:multiparttosingleparts', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+                
+        if feedback.isCanceled():
+            return {}
+            
+        # Ajouter les attributs de géométrie
+        alg_params = {
+            'CALC_METHOD': 0,
+            'INPUT': layer_uniques['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        layer_geom = processing.run('qgis:exportaddgeometrycolumns', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+                      
+        if feedback.isCanceled():
+            return {}
+                
+        # Ajouter un champ auto-incrémenté
+        alg_params = {
+            'FIELD_NAME': 'ZONE_ID',
+            'GROUP_FIELDS': None,
+            'INPUT': layer_geom['OUTPUT'],
+            'SORT_ASCENDING': True,
+            'SORT_EXPRESSION': '',
+            'SORT_NULLS_FIRST': False,
+            'START': 1,
+            'OUTPUT': parameters['OUTPUT']
+        }
+        layer_output = processing.run('native:addautoincrementalfield', alg_params, context=context, feedback=feedback, is_child_algorithm=True)['OUTPUT']
+        
+                         
+        if feedback.isCanceled():
+            return {}
+                
+        return{self.OUTPUT : layer_output} 
+   
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -149,7 +173,7 @@ class Correlation(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'V - Correlation coefficient'
+        return "V - Merging two zonings"
 
     def displayName(self):
         """
@@ -163,17 +187,19 @@ class Correlation(QgsProcessingAlgorithm):
         Returns the name of the group this algorithm belongs to. This string
         should be localised.
         """
-        return self.tr('Correlation')
+        return self.tr('Zoning')
     
     def shortHelpString(self):
         short_help = self.tr(
-            'Allows to calculate a correlation index across numerical '
-            'columns of the input vector layer. A correlation plot is produced.'
+            'Allows to merge two zonings of the same field into one single zoning.'
+            'The final zoning can be considered as a microzoning that combines the'
+            'zones of both initial zonings.'
             '\n provided by ASPEXIT\n'
             'author : Lisa Rollier'
+
         )
         return short_help
-        
+
     def groupId(self):
         """
         Returns the unique ID of the group this algorithm belongs to. This
@@ -182,10 +208,10 @@ class Correlation(QgsProcessingAlgorithm):
         contain lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'correlation'
+        return 'zoning'
 
     def tr(self, string):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return Correlation()
+        return RecroisementZones()
