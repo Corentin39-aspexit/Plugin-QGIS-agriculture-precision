@@ -181,7 +181,7 @@ class InterpolationPoints(QgsProcessingAlgorithm):
                     'INPUT': parameters[self.INPUT],
                     'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }
-                enveloppe_convexe = processing.run('Agriculture de précision:Réaliser une enveloppe convexe à partir de points', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+                enveloppe_convexe = processing.run('Precision Agriculture:V - Convex Hull creation', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
 
   
                                         
